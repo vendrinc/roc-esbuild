@@ -1,0 +1,18 @@
+{
+  "name": "roc-esbuild",
+  "version": "1.0.0",
+  "description": "Load .roc modules from JS or TS",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "roc",
+    "esbuild"
+  ],
+  "author": "Richard Feldman",
+  "license": "UPL-1.0",
+  "optionalDependencies": {
+    "roc-lang": "^0.0.0-2023-05-31-nightly-modified-linux"
+  }
+}
