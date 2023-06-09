@@ -6,9 +6,6 @@
 
 import type { PluginBuild } from "esbuild";
 import child_process from "child_process"
-import fs from "fs/promises"
-import os from "os"
-import path from "path"
 import util from "util"
 
 const execFile = util.promisify(child_process.execFile)
