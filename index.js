@@ -9,7 +9,6 @@ const fs = require("fs/promises")
 const os = require("os")
 const path = require("path")
 const util = require("util")
-const tmp = require("tmp-promise")
 const execFile = util.promisify(child_process.execFile)
 
 const includeRoot = path.resolve(process.execPath, "..", "..")
@@ -37,9 +36,6 @@ const includes = [
 ].map((suffix) => "-I" + path.join(includeRoot, suffix))
 
 const defines = [
-  // TODO is it a problem for multiple different Node addons to have the same name?
-  // If not, may need to derive a unique name from the file path at runtime.
-  "NODE_GYP_MODULE_NAME=addon",
   "USING_UV_SHARED=1",
   "USING_V8_SHARED=1",
   "V8_DEPRECATION_WARNINGS=1",
@@ -138,8 +134,8 @@ const loadRocFile = async (rocFilePath, target) => {
 
   // For now, this are hardcoded. In the future we can extract them into a function to call for multiple entrypoints.
   const ccTarget = ccTargetFromRocTarget(target)
-  const tempfile = await tmp.file()
-  const addonPath = tempfile.path
+  const addonName = rocFileName.replace(/.roc$/, "")
+  const addonPath = path.join(rocFileDir, addonName + ".node")
 
   // Compile the node <-> roc C bridge and statically link in the .o binary (produced by `roc`) into addon.node
   await execFile(
@@ -154,6 +150,8 @@ const loadRocFile = async (rocFilePath, target) => {
       addonPath,
       rocLib,
       cGluePath,
+      "-D",
+      `NODE_GYP_MODULE_NAME=${addonName}`,
       defines,
       includes,
       "-fPIC",
@@ -203,4 +201,3 @@ module.exports = {
     })
   },
 }
-

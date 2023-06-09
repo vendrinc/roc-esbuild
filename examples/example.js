@@ -4,13 +4,9 @@ const esbuild = require("esbuild")
 const rocPlugin = require("..")
 
 async function build(externalDeps) {
-  const entryPoints = await getEntryPoints(path.join(__dirname, "..", "build"))
-
-  // throw JSON.stringify(entryPoints)
-
   esbuild
     .build({
-      entryPoints: [path.join(__dirname, "..", "build", "index.js")],
+      entryPoints: ["src/hello.ts"],
       bundle: true,
       outfile: "dist/build.js",
       sourcemap: "inline",
@@ -27,4 +23,3 @@ async function build(externalDeps) {
 }
 
 build(process.argv.slice(2)) // external dependencies come from the command line
-

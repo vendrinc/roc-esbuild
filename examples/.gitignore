@@ -1,0 +1,4 @@
+dist
+*.o
+main.roc.d.ts
+*.node
