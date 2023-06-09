@@ -15,6 +15,12 @@ const ccTargetFromRocTarget = (rocTarget: string) => {
       return "";
     case "linux64":
       return "--target=x86_64-linux-gnu";
+    case "linux32":
+      return "--target=i386-linux-gnu";
+    case "windows64":
+      return "--target=x86_64-windows-gnu";
+    case "wasm32":
+      return "--target=wasm32-unknown-unknown";
     default:
       throw `Unrecognized --target option for roc compiler: ${rocTarget}`;
   }
