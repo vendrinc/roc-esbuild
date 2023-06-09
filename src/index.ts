@@ -5,12 +5,9 @@
 // 3. Copy the binary and its .d.ts type definitions into the appropriate directory
 
 import type { PluginBuild, Plugin } from "esbuild";
-import child_process from "child_process"
-import util from "util"
+import path from "path"
 
-const execFile = util.promisify(child_process.execFile)
 const buildRocFile = require("./build-roc.ts")
-
 const rocNodeFileNamespace = "roc-node-file"
 
 function roc(opts?: { cc?: Array<string>; target?: string }) : Plugin {
@@ -26,9 +23,7 @@ function roc(opts?: { cc?: Array<string>; target?: string }) : Plugin {
       // Resolve ".roc" files to a ".node" path with a namespace
       build.onResolve({ filter: /\.roc$/, namespace: "file" }, (args) => {
         return {
-          path: require.resolve(args.path.replace(/\.roc$/, ".node"), {
-            paths: [args.resolveDir],
-          }),
+          path: path.isAbsolute(args.path) ? args.path : path.join(args.resolveDir, path.basename(args.path).replace(/\.roc$/, ".node")),
           namespace: rocNodeFileNamespace,
         }
       })

@@ -4,10 +4,14 @@
 // 2. Invoke `zig` to convert that binary into a native Node addon (a .node file)
 // 3. Copy the binary and its .d.ts type definitions into the appropriate directory
 
-import { execSync, spawnSync } from "child_process"
 import fs from "fs"
 import os from "os"
 import path from "path"
+import child_process from "child_process"
+import util from "util"
+
+const { execSync, spawnSync } = child_process
+const execFile = util.promisify(child_process.execFile)
 
 const ccTargetFromRocTarget = (rocTarget: string) => {
   switch (rocTarget) {
@@ -217,7 +221,8 @@ const buildRocFile = async (rocFilePath: string, addonPath: string, config: { cc
     .filter((part) => part !== "")
     .join(" ")
 
-  // Compile the node <-> roc C bridge and statically link in the .o binary (produced by `roc`) into addon.node
+  // Compile the node <-> roc C bridge and statically link in the .o binary (produced by `roc`)
+  // into the .node addon binary
   execSync(cmd, { stdio: "inherit" })
 
   return { errors: [] }
