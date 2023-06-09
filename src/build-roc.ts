@@ -4,33 +4,71 @@
 // 2. Invoke `zig` to convert that binary into a native Node addon (a .node file)
 // 3. Copy the binary and its .d.ts type definitions into the appropriate directory
 
-import { execSync, spawnSync } from "child_process";
+import { execSync, spawnSync } from "child_process"
 import fs from "fs"
 import os from "os"
 import path from "path"
 
 const ccTargetFromRocTarget = (rocTarget: string) => {
   switch (rocTarget) {
-    case "":
-      return "";
     case "linux64":
-      return "--target=x86_64-linux-gnu";
+      return "x86_64-linux-gnu"
     case "linux32":
-      return "--target=i386-linux-gnu";
+      return "i386-linux-gnu"
     case "windows64":
-      return "--target=x86_64-windows-gnu";
+      return "x86_64-windows-gnu"
     case "wasm32":
-      return "--target=wasm32-unknown-unknown";
+      return "wasm32-unknown-unknown"
+    case "":
+      let targetStr = ""
+
+      switch (os.arch()) {
+        case "arm":
+          targetStr = "arm"
+          break;
+        case "arm64":
+          targetStr = "aarch64"
+          break;
+        case "x64":
+          targetStr = "x86_64"
+          break;
+        case "ia32":
+          targetStr = "i386"
+          break;
+        default:
+          throw new Error(`roc-esbuild does not currently support building for this architecture: ${os.arch()}`)
+      }
+
+      targetStr += "-"
+
+      switch (os.platform()) {
+        case "darwin":
+          targetStr += "macos"
+          break;
+        case "win32":
+          targetStr = "win32"
+          break;
+        case "linux":
+          targetStr = "linux"
+          break;
+        default:
+          throw new Error(`roc-esbuild does not currently support building for this operating system: ${os.platform()}`)
+      }
+
+      return targetStr;
+
     default:
-      throw `Unrecognized --target option for roc compiler: ${rocTarget}`;
+      throw `Unrecognized --target option for roc compiler: ${rocTarget}`
   }
-};
+}
 
 const buildRocFile = async (rocFilePath: string, addonPath: string, config: { cc: Array<string>; target: string }) => {
   const { cc, target } = config
-  const rocFileName = path.basename(rocFilePath);
-  const rocFileDir = path.dirname(rocFilePath);
-  const errors = [];
+  const rocFileName = path.basename(rocFilePath)
+  const rocFileDir = path.dirname(rocFilePath)
+  const errors = []
+  const buildingForMac = target === "mac64" || (target === "" && os.platform() === "darwin")
+  const buildingForLinux = target === "linux" || (target === "" && os.platform() === "linux")
 
   // Build the initial Roc object binary for the current OS/architecture.
   //
@@ -47,26 +85,18 @@ const buildRocFile = async (rocFilePath: string, addonPath: string, config: { cc
       target === "" ? "" : `--target=${target}`,
       "--no-link",
       path.join(rocFileDir, "main.roc"),
-    ].filter(part => part !== ""),
+    ].filter((part) => part !== ""),
     {
       stdio: "inherit",
-    }
-  );
+    },
+  )
 
   if (rocExit.error) {
-    throw new Error(
-      "During the npm preinstall hook, `roc build` errored with " +
-        rocExit.error
-    );
+    throw new Error("During the npm preinstall hook, `roc build` errored with " + rocExit.error)
   }
 
-  // Use the appropriate .d.ts file based on our system's architecture.
-  const dtsPath = path.join(
-    rocFileDir,
-    "platform",
-    "glue",
-    os.arch() + ".roc.d.ts"
-  );
+  // Use the appropriate .d.ts file based on our system's archiecture.
+  const dtsPath = path.join(rocFileDir, "platform", "glue", os.arch() + ".roc.d.ts")
 
   fs.copyFileSync(dtsPath, path.join(rocFileDir, "addon.d.ts"));
 
@@ -101,14 +131,14 @@ const buildRocFile = async (rocFilePath: string, addonPath: string, config: { cc
   //   on x64 emulation (e.g. using either Docker or podman + qemu).
 
   // For now, these are hardcoded. In the future we can extract them into a function to call for multiple entrypoints.
-  const ccTarget = ccTargetFromRocTarget(target);
-  const rocLibName = "main.roc";
-  const nodeAddonName = "addon";
-  const cGluePath = path.join(rocFileDir, "platform", "glue", "node-to-roc.c");
-  const rocLibDir = rocFileDir;
+  const ccTarget = ccTargetFromRocTarget(target)
+  const rocLibName = "main.roc"
+  const nodeAddonName = "addon"
+  const cGluePath = path.join(rocFileDir, "platform", "glue", "node-to-roc.c")
+  const rocLibDir = rocFileDir
 
-  const rocLib = path.join(rocLibDir, `lib${rocLibName}.o`);
-  const includeRoot = path.resolve(process.execPath, "..", "..");
+  const rocLib = path.join(rocLibDir, `lib${rocLibName}.o`)
+  const includeRoot = path.resolve(process.execPath, "..", "..")
   const includes = [
     "include/node",
     // Note: binding-gyp typically includes these other paths as well, and includes them from
@@ -142,7 +172,7 @@ const buildRocFile = async (rocFilePath: string, addonPath: string, config: { cc
     "V8_DEPRECATION_WARNINGS",
     "V8_IMMINENT_DEPRECATION_WARNINGS",
     "_GLIBCXX_USE_CXX11_ABI=1",
-    "_LARGEFILE_SOURCE",
+    "_LARGEFIL_SOURCE",
     "_FILE_OFFSET_BITS=64",
     "__STDC_FORMAT_MACROS",
     "OPENSSL_NO_PINSHARED",
@@ -152,13 +182,18 @@ const buildRocFile = async (rocFilePath: string, addonPath: string, config: { cc
     .map((flag) => "-D'" + flag + "'")
     .join(" ");
 
-  const libraries = ["c", "m", "pthread", "dl", "rt", "util"]
-    .map((library) => "-l" + library)
-    .join(" ");
+  const libraries = ["c", "m", "pthread", "dl", "util"].map((library) => "-l" + library)
 
-  const zigCmd = [
-    "zig",
-    "cc",
+  if (buildingForMac) {
+    // macOS always requires -lSystem
+    libraries.push("-lSystem")
+  } else if (buildingForLinux) {
+    // Linux requires -lrt
+    libraries.push("-lrt")
+  }
+
+  const cmd = cc.concat([
+    "-target",
     ccTarget,
     "-o",
     addonPath,
@@ -175,14 +210,17 @@ const buildRocFile = async (rocFilePath: string, addonPath: string, config: { cc
     "-O3",
     "-fno-omit-frame-pointer",
     "-MMD",
-    libraries,
+    libraries.join(" "),
     "-shared",
-  ].flat().filter(part => part !== "").join(" ")
+  ])
+    .flat()
+    .filter((part) => part !== "")
+    .join(" ")
 
   // Compile the node <-> roc C bridge and statically link in the .o binary (produced by `roc`) into addon.node
-  execSync(zigCmd, { stdio: "inherit" });
+  execSync(cmd, { stdio: "inherit" })
 
-  return { errors: [] };
-};
+  return { errors: [] }
+}
 
-module.exports = buildRocFile;
+module.exports = buildRocFile

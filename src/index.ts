@@ -4,7 +4,7 @@
 // 2. Invoke `cc` to convert that binary into a native Node addon (a .node file)
 // 3. Copy the binary and its .d.ts type definitions into the appropriate directory
 
-import type { PluginBuild } from "esbuild";
+import type { PluginBuild, Plugin } from "esbuild";
 import child_process from "child_process"
 import util from "util"
 
@@ -13,7 +13,7 @@ const buildRocFile = require("./build-roc.ts")
 
 const rocNodeFileNamespace = "roc-node-file"
 
-async function roc(opts?: { cc?: Array<string>; target?: string }) {
+function roc(opts?: { cc?: Array<string>; target?: string }) : Plugin {
   const config = opts !== undefined ? opts : {}
 
   // The C compiler to use - e.g. you can specify `["zig" "cc"]` here to use Zig instead of the defualt `cc`.
@@ -68,4 +68,4 @@ async function roc(opts?: { cc?: Array<string>; target?: string }) {
   }
 }
 
-module.exports = roc
+export default roc
