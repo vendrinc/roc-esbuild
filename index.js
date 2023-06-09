@@ -4,14 +4,14 @@
 // 2. Invoke `cc` to convert that binary into a native Node addon (a .node file)
 // 3. Copy the binary and its .d.ts type definitions into the appropriate directory
 
-const child_process = require("child_process")
-const fs = require("fs/promises")
-const os = require("os")
-const path = require("path")
-const util = require("util")
-const execFile = util.promisify(child_process.execFile)
+const child_process = require("child_process");
+const fs = require("fs/promises");
+const os = require("os");
+const path = require("path");
+const util = require("util");
+const execFile = util.promisify(child_process.execFile);
 
-const includeRoot = path.resolve(process.execPath, "..", "..")
+const includeRoot = path.resolve(process.execPath, "..", "..");
 const includes = [
   "include/node",
   // Note: binding-gyp typically includes these other paths as well, and includes them from
@@ -33,7 +33,7 @@ const includes = [
   // "deps/uv/include",
   // "deps/zlib",
   // "deps/v8/include"
-].map((suffix) => "-I" + path.join(includeRoot, suffix))
+].map((suffix) => "-I" + path.join(includeRoot, suffix));
 
 const defines = [
   "USING_UV_SHARED=1",
@@ -48,25 +48,27 @@ const defines = [
   "OPENSSL_NO_PINSHARED",
   "OPENSSL_THREADS",
   "BUILDING_NODE_EXTENSION",
-].flatMap((flag) => ["-D", flag])
+].flatMap((flag) => ["-D", flag]);
 
-const libraries = ["c", "m", "pthread", "dl", "rt", "util"].map((library) => "-l" + library)
+const libraries = ["c", "m", "pthread", "dl", "rt", "util"].map(
+  (library) => "-l" + library
+);
 
 const ccTargetFromRocTarget = (rocTarget) => {
   switch (rocTarget) {
     case "":
-      return ""
+      return "";
     case "linux64":
-      return "--target=x86_64-linux-gnu"
+      return "--target=x86_64-linux-gnu";
     default:
-      throw `Unrecognized --target option for roc compiler: ${rocTarget}`
+      throw `Unrecognized --target option for roc compiler: ${rocTarget}`;
   }
-}
+};
 
 const loadRocFile = async (rocFilePath, target) => {
-  const rocFileName = path.basename(rocFilePath)
-  const rocFileDir = path.dirname(rocFilePath)
-  const errors = []
+  const rocFileName = path.basename(rocFilePath);
+  const rocFileDir = path.dirname(rocFilePath);
+  const errors = [];
 
   // Build the initial Roc object binary for the current OS/architecture.
   //
@@ -81,27 +83,27 @@ const loadRocFile = async (rocFilePath, target) => {
     target === "" ? "" : `--target=${target}`,
     "--no-link",
     rocFilePath,
-  ])
+  ].filter(elem => elem != null));
 
   if (rocExit.error) {
     // TODO capture stdout/stderr to `errors` and/or `warnings`
-    throw new Error("`roc build` errored with " + rocExit.error)
+    throw new Error("`roc build` errored with " + rocExit.error);
   }
 
-  const rocLib = path.join(rocFileDir, `lib${rocFileName}.o`) // e.g. "libmain.roc.o"
+  const rocLib = path.join(rocFileDir, `lib${rocFileName}.o`); // e.g. "libmain.roc.o"
 
   // TODO replace this with `roc --output=...` once that roc CLI flag lands
-  fs.rename(rocFilePath.replace(/.roc$/, ".o"), rocLib)
+  fs.rename(rocFilePath.replace(/.roc$/, ".o"), rocLib);
 
   // TODO use `roc glue` to generate this file for the .roc file given in args.path
-  const cGluePath = path.join(rocFileDir, "platform", "glue", "node-to-roc.c")
+  const cGluePath = path.join(rocFileDir, "platform", "glue", "node-to-roc.c");
 
   // The .d.ts file needs to be in the same directory as the .roc file, so that e.g. VSCode tooling will pick up on it.
   await fs.copyFile(
     // Use the appropriate .d.ts file based on our system's architecture.
     path.join(rocFileDir, "platform", "glue", os.arch() + ".roc.d.ts"),
-    rocFilePath + ".d.ts",
-  )
+    rocFilePath + ".d.ts"
+  );
 
   // Use Zig to link the compiled roc binary into a native node addon. This replaces what binding.gyp would do in most
   // native node addons, except it works cross-platform and runs much faster.
@@ -133,9 +135,9 @@ const loadRocFile = async (rocFilePath, target) => {
   //   on x64 emulation (e.g. using either Docker or podman + qemu).
 
   // For now, this are hardcoded. In the future we can extract them into a function to call for multiple entrypoints.
-  const ccTarget = ccTargetFromRocTarget(target)
-  const addonName = rocFileName.replace(/.roc$/, "")
-  const addonPath = path.join(rocFileDir, addonName + ".node")
+  const ccTarget = ccTargetFromRocTarget(target);
+  const addonName = rocFileName.replace(/.roc$/, "");
+  const addonPath = path.join(rocFileDir, addonName + ".node");
 
   // Compile the node <-> roc C bridge and statically link in the .o binary (produced by `roc`) into addon.node
   await execFile(
@@ -165,39 +167,56 @@ const loadRocFile = async (rocFilePath, target) => {
       "-MMD",
       libraries,
       "-shared",
-    ].flat(),
-  )
+    ].flat()
+  );
 
   // TODO add any errors to `errors`
-
-  return {
-    contents: await fs.readFile(addonPath),
-    // Don't include these contents in the bundle.
-    // Instead, copy the contents to a file, and rewrite the import path to point to it.
-    // https://esbuild.github.io/content-types/#copy
-    loader: "file",
-    errors,
-  }
-}
+  //
+  return errors;
+};
 
 module.exports = {
   name: "roc",
   setup(build) {
-    // Resolve ".roc" files to a path with a namespace
-    build.onResolve({ filter: /\.roc$/ }, (args) => {
-      // Resolve relative paths to absolute paths here since this
-      // resolve callback is given "resolveDir", the directory to
-      // resolve imports against.
-      return {
-        path: path.isAbsolute(args.path) ? args.path : path.join(args.resolveDir, args.path),
-        namespace: "roc",
-      }
-    })
+    const rocNodeFileNamespace = "roc-node-file"
 
-    // Load ".roc" files, generate .d.ts files for them, compile and link them into native Node addons,
-    // and tell esbuild how to bundle those addons.
-    build.onLoad({ filter: /\.roc$/ }, async (args) => {
-      return loadRocFile(args.path, "linux64") // TODO get the `target` arg from the esbuild config
-    })
+    // Resolve ".roc" files to a ".node" path with a namespace
+    build.onResolve({ filter: /\.roc$/, namespace: "file" }, (args) => {
+      return {
+        path: require.resolve(args.path.replace(/\.roc$/, ".node"), { paths: [args.resolveDir] }),
+        namespace: rocNodeFileNamespace,
+      };
+    });
+
+    // Files in the "node-file" virtual namespace call "require()" on the
+    // path from esbuild of the ".node" file in the output directory.
+    // Strategy adapted from https://github.com/evanw/esbuild/issues/1051#issuecomment-806325487
+    build.onLoad({ filter: /.*/, namespace: rocNodeFileNamespace }, (args) => {
+      // Load ".roc" files, generate .d.ts files for them, compile and link them into native Node addons,
+      // and tell esbuild how to bundle those addons.
+      const errors = loadRocFile(args.path.replace(/\.node$/, ".roc"), "linux64")  // TODO get `target` arg from esbuild config
+
+      return {
+        contents: `
+          import path from ${JSON.stringify(args.path)}
+          module.exports = require(path)
+        `
+      };
+    });
+
+    // If a ".node" file is imported within a module in the "roc-node-file" namespace, put
+    // it in the "file" namespace where esbuild's default loading behavior will handle
+    // it. It is already an absolute path since we resolved it to one earlier.
+    build.onResolve({ filter: /\.node$/, namespace: rocNodeFileNamespace }, args => ({
+      path: args.path,
+      namespace: 'file',
+    }))
+
+    // Use the `file` loader for .node files by default.
+    let opts = build.initialOptions;
+
+    opts.loader = opts.loader || {};
+
+    opts.loader[".node"] = "file";
   },
-}
+};
