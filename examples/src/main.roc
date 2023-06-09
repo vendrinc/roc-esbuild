@@ -1,4 +1,4 @@
-app "main.roc"
+app "main"
     packages { pf: "platform/main.roc" }
     imports []
     provides [main] to pf

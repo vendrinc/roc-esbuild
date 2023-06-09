@@ -136,12 +136,11 @@ const buildRocFile = async (rocFilePath: string, addonPath: string, config: { cc
 
   // For now, these are hardcoded. In the future we can extract them into a function to call for multiple entrypoints.
   const ccTarget = ccTargetFromRocTarget(target)
-  const rocLibName = "main.roc"
   const nodeAddonName = "addon"
   const cGluePath = path.join(rocFileDir, "platform", "glue", "node-to-roc.c")
   const rocLibDir = rocFileDir
 
-  const rocLib = path.join(rocLibDir, `lib${rocLibName}.o`)
+  const rocLib = path.join(rocLibDir, rocFileName.replace(/\.roc$/, ".o"))
   const includeRoot = path.resolve(process.execPath, "..", "..")
   const includes = [
     "include/node",
