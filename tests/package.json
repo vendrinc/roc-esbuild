@@ -1,0 +1,19 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "description": "An example of using the roc-esbuild plgin",
+  "main": "example.js",
+  "scripts": {
+    "start": "node example.js"
+  },
+  "keywords": [
+    "roc",
+    "esbuild"
+  ],
+  "author": "Richard Feldman",
+  "license": "UPL-1.0",
+  "devDependencies": {
+    "esbuild": "^0.17.19",
+    "roc-esbuild": "file:.."
+  }
+}

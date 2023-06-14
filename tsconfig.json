@@ -2,10 +2,10 @@
   "compilerOptions": {
     "target": "ES2019",
     "module": "commonjs",
-    "outDir": "./dist",
+    "outDir": "./dist2",
     "strict": true,
     "esModuleInterop": true
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.c"],
   "exclude": ["node_modules"]
 }
