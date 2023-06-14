@@ -424,7 +424,6 @@ napi_value call_roc(napi_env env, napi_callback_info info)
 
         return NULL;
     }
-    napi_status status;
 }
 
 napi_value init(napi_env env, napi_value exports)

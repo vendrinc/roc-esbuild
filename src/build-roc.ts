@@ -12,7 +12,7 @@ import util from "util"
 
 const { execSync, spawnSync } = child_process
 const execFile = util.promisify(child_process.execFile)
-const cGluePath = path.join(__dirname, "node-to-roc.c")
+const cGluePath = path.join(__dirname, "..", "src", "node-to-roc.c") // remember, we're executing from dist/
 
 const ccTargetFromRocTarget = (rocTarget: string) => {
   switch (rocTarget) {
@@ -51,10 +51,10 @@ const ccTargetFromRocTarget = (rocTarget: string) => {
           targetStr += "macos"
           break;
         case "win32":
-          targetStr = "win32"
+          targetStr += "win32"
           break;
         case "linux":
-          targetStr = "linux"
+          targetStr += "linux"
           break;
         default:
           throw new Error(`roc-esbuild does not currently support building for this operating system: ${os.platform()}`)
@@ -145,7 +145,7 @@ const buildRocFile = async (rocFilePath: string, addonPath: string, config: { cc
   //   on x64 emulation (e.g. using either Docker or podman + qemu).
 
   // For now, these are hardcoded. In the future we can extract them into a function to call for multiple entrypoints.
-  const ccTarget = ccTargetFromRocTarget(target)
+  const ccTarget = target === "" ? "" : `--target=${ccTargetFromRocTarget(target)}`
   const rocLibDir = rocFileDir
 
   const rocLib = path.join(rocLibDir, rocFileName.replace(/\.roc$/, ".o"))
@@ -206,8 +206,7 @@ const buildRocFile = async (rocFilePath: string, addonPath: string, config: { cc
   }
 
   const cmd = cc.concat([
-    "-target",
-    ccTarget,
+    ccTarget === "" ? "" : ccTarget,
     "-o",
     addonPath,
     rocLib,
