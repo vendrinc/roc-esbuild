@@ -5,9 +5,20 @@
 #include <stddef.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
+#include <setjmp.h>
 #include <node_api.h>
 
-napi_env napi_global_env;
+napi_env last_napi_env;
+jmp_buf jump_on_crash;
+int last_signal;
+
+void signal_handler(int sig)
+{
+    // Store the signal we encountered, and jump back to the handler
+    last_signal = sig;
+    longjmp(jump_on_crash, 1);
+}
 
 void *roc_alloc(size_t size, unsigned int alignment) { return malloc(size); }
 
@@ -24,7 +35,7 @@ void roc_panic(void *ptr, unsigned int alignment)
     // WARNING: If roc_panic is called before napi_global_env is set,
     // the result will be undefined behavior. So never call any Roc
     // functions before setting napi_global_env!
-    napi_throw_error(napi_global_env, NULL, (char *)ptr);
+    napi_throw_error(last_napi_env, NULL, (char *)ptr);
 }
 
 void *roc_memcpy(void *dest, const void *src, size_t n)
@@ -360,50 +371,75 @@ extern void roc__mainForHost_1_exposed_generic(struct RocStr *ret, struct RocStr
 // back from Roc and convert it into a Node string.
 napi_value call_roc(napi_env env, napi_callback_info info)
 {
+    // Set the jump point so we can recover from a segfault.
+    if (setjmp(jump_on_crash) == 0)
+    {
+        // This is *not* the result of a longjmp
+
+        // roc_panic needs a napi_env in order to throw a Node exception, so we provide this
+        // one globally in case roc_panic gets called during the execution of our Roc function.
+        //
+        // According do the docs - https://nodejs.org/api/n-api.html#napi_env -
+        // it's very important that the napi_env that was passed into "the initial
+        // native function" is the one that's "passed to any subsequent nested Node-API calls,"
+        // so we must override this every time we call this function (as opposed to, say,
+        // setting it once during init).
+        last_napi_env = env;
+
+        // Get the argument passed to the Node function
+        size_t argc = 1;
+        napi_value argv[1];
+
+        napi_status status = napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
+
+        if (status != napi_ok)
+        {
+            return NULL;
+        }
+
+        napi_value node_arg = argv[0];
+
+        struct RocStr roc_arg;
+
+        status = node_string_into_roc_str(env, node_arg, &roc_arg);
+
+        if (status != napi_ok)
+        {
+            return NULL;
+        }
+
+        struct RocStr roc_ret;
+        // Call the Roc function to populate `roc_ret`'s bytes.
+        roc__mainForHost_1_exposed_generic(&roc_ret, &roc_arg);
+
+        // Consume the RocStr to create the Node string.
+        return roc_str_into_node_string(env, roc_ret);
+    }
+    else
+    {
+        // This *is* the result of a longjmp
+        char error_msg[256];
+        sprintf(error_msg, "%s while running the `hello` function in main.roc", strsignal(last_signal));
+        napi_throw_error(env, NULL, error_msg);
+
+        return NULL;
+    }
     napi_status status;
-
-    // roc_panic needs a napi_env in order to throw a Node exception, so we provide this
-    // one globally in case roc_panic gets called during the execution of our Roc function.
-    //
-    // According do the docs - https://nodejs.org/api/n-api.html#napi_env -
-    // it's very important that the napi_env that was passed into "the initial
-    // native function" is the one that's "passed to any subsequent nested Node-API calls,"
-    // so we must override this every time we call this function (as opposed to, say,
-    // setting it once during init).
-    napi_global_env = env;
-
-    // Get the argument passed to the Node function
-    size_t argc = 1;
-    napi_value argv[1];
-
-    status = napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
-
-    if (status != napi_ok)
-    {
-        return NULL;
-    }
-
-    napi_value node_arg = argv[0];
-
-    struct RocStr roc_arg;
-
-    status = node_string_into_roc_str(env, node_arg, &roc_arg);
-
-    if (status != napi_ok)
-    {
-        return NULL;
-    }
-
-    struct RocStr roc_ret;
-    // Call the Roc function to populate `roc_ret`'s bytes.
-    roc__mainForHost_1_exposed_generic(&roc_ret, &roc_arg);
-
-    // Consume the RocStr to create the Node string.
-    return roc_str_into_node_string(env, roc_ret);
 }
 
 napi_value init(napi_env env, napi_value exports)
 {
+    // Before doing anything else, install signal handlers in case subsequent C code causes any of these.
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = signal_handler;
+
+    // Handle all the signals that could take out the Node process and translate them to exceptions.
+    sigaction(SIGSEGV, &action, NULL);
+    sigaction(SIGBUS, &action, NULL);
+    sigaction(SIGFPE, &action, NULL);
+
+    // Create our Node functions and expose them from this module.
     napi_status status;
     napi_value fn;
 
