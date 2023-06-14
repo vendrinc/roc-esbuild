@@ -10,6 +10,7 @@ os_name=$(uname)
 script_dir=$(readlink -f "$(dirname "$0")")
 test_dir=$script_dir/tests
 
+# These tests don't work in macOS yet.
 if [ "$os_name" = "Linux" ]; then
     echo "Running npm install to refresh roc-esbuild and tests"
     rm -rf node_modules
@@ -29,7 +30,7 @@ if [ "$os_name" = "Linux" ]; then
 fi
 
 if [ "$os_name" != "Linux" ]; then
-    printf "\nRe-running tests in Docker to verify they pass on Linux\n\n"
+    printf "\nRunning tests in Docker to verify they pass on Linux\n\n"
 
     # Build the docker image, storing output in a tempfile and then printing it only if it failed.
     docker_image_name=roc-esbuild-tests
