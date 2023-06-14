@@ -10,7 +10,7 @@ import path from "path"
 const buildRocFile = require("./build-roc.ts")
 const rocNodeFileNamespace = "roc-node-file"
 
-function roc(opts?: { cc?: Array<string>; target?: string }) : Plugin {
+function roc(opts?: { cc?: Array<string>; target?: string, optimize?: boolean }) : Plugin {
   const config = opts !== undefined ? opts : {}
 
   // The C compiler to use - e.g. you can specify `["zig" "cc"]` here to use Zig instead of the defualt `cc`.
