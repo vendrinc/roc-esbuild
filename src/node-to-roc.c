@@ -69,16 +69,15 @@ void decref_heap_bytes(uint8_t *bytes, uint32_t alignment)
     ssize_t *refcount_ptr = ((ssize_t *)bytes) - 1;
     ssize_t refcount = *refcount_ptr;
 
-    if (refcount != REFCOUNT_READONLY)
+    if (refcount == REFCOUNT_ONE)
+    {
+        void *original_allocation = (void *)(refcount_ptr - (extra_bytes - sizeof(size_t)));
+
+        roc_dealloc(original_allocation, alignment);
+    }
+    else if (refcount != REFCOUNT_READONLY)
     {
         *refcount_ptr = refcount - 1;
-
-        if (refcount == REFCOUNT_ONE)
-        {
-            void *original_allocation = (void *)(refcount_ptr - (extra_bytes - sizeof(size_t)));
-
-            roc_dealloc(original_allocation, alignment);
-        }
     }
 }
 
