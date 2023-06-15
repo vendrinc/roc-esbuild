@@ -1,10 +1,13 @@
 platform "typescript-interop"
-    requires {} { main : Str -> Str }
+    requires {} { main : arg -> ret | arg has Decode, ret has Encode }
     exposes []
     packages {}
-    imports []
+    imports [Json]
     provides [mainForHost]
 
-mainForHost : Str -> Str
-mainForHost = \message ->
-    main message
+mainForHost : List U8 -> List U8
+mainForHost = \input ->
+    input
+    |> Decode.fromBytes Json.json
+    |> main
+    |> Encode.toBytes Json.json
