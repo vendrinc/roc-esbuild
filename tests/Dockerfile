@@ -19,4 +19,4 @@ ENV PATH      $NVM_DIR/versions/node/v16.16.0/bin:$PATH
 RUN node -v
 RUN npm -v
 
-CMD sh test.sh
+CMD bash test.sh

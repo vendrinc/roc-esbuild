@@ -10,12 +10,15 @@ import path from "path"
 const buildRocFile = require("./build-roc.ts")
 const rocNodeFileNamespace = "roc-node-file"
 
-function roc(opts?: { cc?: Array<string>; target?: string, optimize?: boolean }) : Plugin {
+function roc(opts?: { cc?: Array<string>; target?: string, optimize?: boolean, rocPlatformMain?: string }) : Plugin {
   const config = opts !== undefined ? opts : {}
 
   // The C compiler to use - e.g. you can specify `["zig" "cc"]` here to use Zig instead of the defualt `cc`.
   const cc = config.hasOwnProperty("cc") ? config.cc : ["cc"]
   const target = config.hasOwnProperty("target") ? config.target : ""
+  // TODO this is only necessary until `roc glue` can be run on app modules; once that exists,
+  // we should run glue on the app .roc file and this option should go away.
+  const rocPlatformMain = config.hasOwnProperty("rocPlatformMain") ? config.rocPlatformMain : ""
 
   return {
     name: "roc",
@@ -35,7 +38,7 @@ function roc(opts?: { cc?: Array<string>; target?: string, optimize?: boolean })
         // Load ".roc" files, generate .d.ts files for them, compile and link them into native Node addons,
         // and tell esbuild how to bundle those addons.
         const rocFilePath = args.path.replace(/\.node$/, ".roc")
-        const { errors } = buildRocFile(rocFilePath, args.path, { target, cc }) // TODO get `target` arg from esbuild config
+        const { errors } = buildRocFile(rocFilePath, args.path, { target, cc, rocPlatformMain }) // TODO get `target` arg from esbuild config
 
         return {
           contents: `

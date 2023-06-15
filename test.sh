@@ -21,11 +21,15 @@ if [ "$os_name" = "Linux" ]; then
 
     echo "Running tests"
 
-    # Loop over all .js files
-    for file in "$test_dir"/*.js
+    for dir in "$test_dir"/*/
     do
-        printf "\tRunning %s\n" "$file"
-        node "$file" && printf "Passed: \t%s\n" "$file"
+        # Don't treat node_modules as a test dir
+        case "$dir" in
+        *"node_modules"*) continue;;
+        esac
+
+        printf "\tRunning test: %s\n" "$dir"
+        node "$test_dir/run-test.js" "$dir" && printf "Passed: \t%s\n" "$dir"
     done
 fi
 
