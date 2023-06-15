@@ -13,16 +13,22 @@
 // $ node -e "console.log(path.resolve(process.execPath, '..', '..', 'include', 'node'))"
 #include <node_api.h>
 
-jmp_buf jump_on_crash;
-int last_signal;
-char *last_roc_crash_msg;
+// These are all volatile because they're used in signal handlers.
+volatile jmp_buf jump_on_crash;
+volatile int last_signal;
+volatile char *last_roc_crash_msg;
 
 void signal_handler(int sig)
 {
     // Store the signal we encountered, and jump back to the handler
     last_signal = sig;
     last_roc_crash_msg = NULL;
-    longjmp(jump_on_crash, 1);
+
+    // clang-tidy complains that jump_on_crash is volatile and longjmp expects a non-volatile argument.
+    // However, my understanding (and chatGPT agrees) is that any global variables accessed from within
+    // signal handlers should be marked volatile. Casting to non-volatile jmp_buf doesn't work because
+    // jmp_buf is an array type, and C doesn't allow casting to array types. Hence the NOLINT.
+    longjmp(jump_on_crash, 1); // NOLINT(clang-diagnostic-incompatible-pointer-types-discards-qualifiers)
 }
 
 void *roc_alloc(size_t size, unsigned int alignment) { return malloc(size); }
@@ -415,7 +421,11 @@ void roc_panic(struct RocStr *roc_str)
     last_signal = 0;
     last_roc_crash_msg = roc_str_into_c_string(*roc_str);
 
-    longjmp(jump_on_crash, 1);
+    // clang-tidy complains that jump_on_crash is volatile and longjmp expects a non-volatile argument.
+    // However, my understanding (and chatGPT agrees) is that any global variables accessed from within
+    // signal handlers should be marked volatile. Casting to non-volatile jmp_buf doesn't work because
+    // jmp_buf is an array type, and C doesn't allow casting to array types. Hence the NOLINT.
+    longjmp(jump_on_crash, 1); // NOLINT(clang-diagnostic-incompatible-pointer-types-discards-qualifiers)
 }
 
 extern void roc__mainForHost_1_exposed_generic(struct RocStr *ret, struct RocStr *arg);
