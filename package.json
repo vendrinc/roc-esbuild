@@ -1,6 +1,6 @@
 {
   "name": "roc-esbuild",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Load .roc modules from JS or TS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,7 +8,7 @@
     "check": "tsc --noEmit",
     "build": "esbuild --bundle src/index.ts --outfile=dist/index.js --platform=node --target=node16.16.0 --sourcemap && cp src/*.roc dist/ && cp src/*.c dist/ && cp -r vendor/glue-platform/ dist/glue-platform",
     "dev": "ts-node src/index.ts",
-    "test": "ava",
+    "test": "./test.sh",
     "prepublishOnly": "npm run build",
     "postinstall": "npm run build || echo 'Build skipped'"
   },
