@@ -438,7 +438,6 @@ napi_value call_roc(napi_env env, napi_callback_info info)
         }
 
         napi_value node_arg = argv[0];
-
         struct RocStr roc_arg;
 
         status = node_string_into_roc_str(env, node_arg, &roc_arg);
@@ -482,6 +481,7 @@ napi_value init(napi_env env, napi_value exports)
     sigaction(SIGSEGV, &action, NULL);
     sigaction(SIGBUS, &action, NULL);
     sigaction(SIGFPE, &action, NULL);
+    sigaction(SIGILL, &action, NULL);
 
     // Create our Node functions and expose them from this module.
     napi_status status;
