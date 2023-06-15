@@ -441,8 +441,6 @@ napi_value call_roc(napi_env env, napi_callback_info info)
 
         struct RocStr roc_arg;
 
-        // TODO run JSON.stringify on this, then convert that node_string into roc_bytes (List U8, so no small str)
-        // TODO convert the return value from List U8 (known to be UTF-8 though) into node_str, then JSON.decode that
         status = node_string_into_roc_str(env, node_arg, &roc_arg);
 
         if (status != napi_ok)
