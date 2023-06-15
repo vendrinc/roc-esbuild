@@ -14,6 +14,8 @@ fs.rmSync(distDir, { recursive: true, force: true });
 fs.mkdirSync(distDir)
 
 async function build() {
+  console.log("Running esbuild.build() with roc plugin...")
+
   await esbuild
     .build({
       entryPoints: [path.join(testDir, "hello.ts")],
@@ -29,6 +31,8 @@ async function build() {
       console.error(err)
       process.exit(1)
     });
+
+    console.log("esbuild finished; executing compiled js...")
 
     try {
       execSync("node " + outfile, { stdio: "inherit" })

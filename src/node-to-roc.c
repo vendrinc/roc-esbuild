@@ -11,7 +11,7 @@
 
 jmp_buf jump_on_crash;
 int last_signal;
-char* last_roc_crash_msg;
+char *last_roc_crash_msg;
 
 void signal_handler(int sig)
 {
@@ -30,14 +30,6 @@ void *roc_realloc(void *ptr, size_t new_size, size_t old_size,
 }
 
 void roc_dealloc(void *ptr, unsigned int alignment) { free(ptr); }
-
-void roc_panic(void *ptr, unsigned int alignment)
-{
-    last_signal = 0;
-    last_roc_crash_msg = "The Roc application hit a `crash`"; // TODO convert the ptr to a C string
-
-    longjmp(jump_on_crash, 1);
-}
 
 void *roc_memcpy(void *dest, const void *src, size_t n)
 {
@@ -216,6 +208,18 @@ size_t roc_str_len(struct RocStr str)
     }
 }
 
+size_t roc_str_len_small(struct RocStr str) {
+    uint8_t *bytes = (uint8_t *)&str;
+    uint8_t last_byte = bytes[sizeof(str) - 1];
+    uint8_t last_byte_xored = last_byte ^ 0b10000000;
+
+    return (size_t)(last_byte_xored);
+}
+
+size_t roc_str_len_big(struct RocStr str) {
+    return str.len & PTRDIFF_MAX; // Account for seamless slices
+}
+
 void decref_large_str(struct RocStr str)
 {
     uint8_t *bytes;
@@ -364,6 +368,51 @@ napi_value roc_str_as_node_string(napi_env env, struct RocStr roc_str)
     // Do not decrement the RocStr's refcount because we did not consume it.
 
     return answer;
+}
+
+// Create a C string from the given RocStr. Don't reuse memory; do a fresh malloc for it.
+// Don't decrement the RocStr's refcount. (To decrement it, use roc_str_into_c_string instead.)
+char *roc_str_into_c_string(struct RocStr roc_str)
+{
+    char *roc_str_contents;
+    size_t len;
+    bool is_small = is_small_str(roc_str);
+
+    if (is_small)
+    {
+        // In a small string, the string itself contains its contents.
+        roc_str_contents = (char *)&roc_str;
+        len = roc_str_len_small(roc_str);
+    }
+    else
+    {
+        roc_str_contents = (char *)roc_str.bytes;
+        len = roc_str_len_big(roc_str);
+    }
+
+    char *buf = (char *)malloc(len + 1); // leave room for the \0 at the end
+
+    // Copy the bytes from the string into the buffer
+    memcpy(buf, roc_str_contents, len);
+
+    // Write the \0 at the end
+    buf[len] = '\0';
+
+    // Decrement the RocStr because we consumed it.
+    if (!is_small)
+    {
+        decref_large_str(roc_str);
+    }
+
+    return buf;
+}
+
+void roc_panic(struct RocStr *roc_str)
+{
+    last_signal = 0;
+    last_roc_crash_msg = roc_str_into_c_string(*roc_str);
+
+    longjmp(jump_on_crash, 1);
 }
 
 extern void roc__mainForHost_1_exposed_generic(struct RocStr *ret, struct RocStr *arg);
