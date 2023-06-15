@@ -458,7 +458,7 @@ napi_value call_roc(napi_env env, napi_callback_info info)
     {
         // This *is* the result of a longjmp
         char *msg = last_roc_crash_msg != NULL ? last_roc_crash_msg : strsignal(last_signal);
-        char *suffix = " while running the `hello` function in main.roc";
+        char *suffix = " signal caught while running the `hello` function in main.roc";
         char *buf = malloc(strlen(msg) + strlen(suffix) + 1); // +1 for the null terminator
 
         strcpy(buf, msg);
