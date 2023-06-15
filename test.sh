@@ -21,8 +21,8 @@ if [ "$os_name" = "Linux" ]; then
         *"node_modules"*) continue;;
         esac
 
-        printf "\tRunning cross-compiled test: %s\n" "$dir"
-        node "$test_dir/dist/output.js" && printf "Passed: \t%s\n" "$dir"
+        printf "\n⭐️ Running cross-compiled test: %s\n\n" "$dir"
+        node "$dir/dist/output.js" && printf "\n⭐️ Passed: %s\n\n" "$dir"
     done
 
     # Now rebuild everything locally and try that (without cross-compilation).
@@ -42,10 +42,10 @@ if [ "$os_name" = "Linux" ]; then
         *"node_modules"*) continue;;
         esac
 
-        printf "\tBuilding test using roc-esbuild plugin: %s\n" "$dir"
-        node "$test_dir/build.js" "$dir" && printf "\tBuild succeeded: \t%s\n" "$dir"
-        printf "\tRunning compiled test: %s\n" "$dir"
-        node "$test_dir/dist/output.js" && printf "\tPassed: \t%s\n" "$dir"
+        printf "\n⭐️ Building test using roc-esbuild plugin: %s\n\n" "$dir"
+        node "$test_dir/build.js" "$dir" && printf "\n⭐️ Build succeeded: %s\n\n" "$dir"
+        printf "\n⭐️ Running compiled test: %s\n\n" "$dir"
+        node "$dir/dist/output.js" && printf "\n⭐️ Passed: %s\n\n" "$dir"
     done
 else
     # We're running in macOS, so cross-compile
@@ -65,8 +65,8 @@ else
         *"node_modules"*) continue;;
         esac
 
-        printf "\tCross-compiling test using roc-esbuild plugin with zig cc: %s\n" "$dir"
-        node "$test_dir/build.js" "$dir" --cross-compile && printf "\tBuild succeeded: \t%s\n" "$dir"
+        printf "\n⭐️ Cross-compiling test using roc-esbuild plugin with zig cc: %s\n\n" "$dir"
+        node "$test_dir/build.js" "$dir" --cross-compile && printf "\n⭐️ Cross-compiled build succeeded: %s\n\n" "$dir"
     done
 fi
 
