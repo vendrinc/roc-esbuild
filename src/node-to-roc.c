@@ -15,9 +15,16 @@
 // 'node'))"
 #include <node_api.h>
 
+// This is not volatile because it's only ever set inside a signal handler,
+// which according to chatGPT is fine.
+//
+// (Also, clang gives a warning if it's marked volatile, because
+// setjmp and longjmp expect non-volatile arguments, and you can't cast
+// the arguments to (jmp_buf) to avoid that warning because jmp_buf is
+// an array type, and you can't cast array types.)
 jmp_buf jump_on_crash;
 
-// These are all volatile because they're used in signal handlers.
+// These are all volatile because they're used in signal handlers but can be set outside the signal handler.
 volatile int last_signal;
 volatile char *last_roc_crash_msg;
 
