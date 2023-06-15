@@ -1,6 +1,9 @@
 // Accepts a CLI arg for the directory of the test to run.
 const testDir = process.argv[2]
 
+// Accepts a CLI arg for whether to cross-compile
+const crossCompile = process.argv[3] === "--cross-compile"
+
 const path = require("path")
 const fs = require("fs")
 const esbuild = require("esbuild")
@@ -14,7 +17,9 @@ fs.rmSync(distDir, { recursive: true, force: true });
 fs.mkdirSync(distDir)
 
 async function build() {
-  console.log("Running esbuild.build() with roc plugin...")
+  console.log("Running esbuild.build() with roc() plugin...")
+
+  const pluginArg = crossCompile ? { cc: ["zig", "cc"], target: "linux64" } : undefined;
 
   await esbuild
     .build({
@@ -25,22 +30,12 @@ async function build() {
       platform: "node",
       minifyWhitespace: true,
       treeShaking: true,
-      plugins: [roc()],
+      plugins: [roc(pluginArg)],
     })
     .catch((err) => {
       console.error(err)
       process.exit(1)
     });
-
-    console.log("esbuild finished; executing compiled js...")
-
-    try {
-      execSync("node " + outfile, { stdio: "inherit" })
-    }
-    catch (err) {
-      console.error(err)
-      process.exit(1)
-    }
 }
 
 build()
