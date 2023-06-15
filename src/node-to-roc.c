@@ -7,6 +7,10 @@
 #include <unistd.h>
 #include <signal.h>
 #include <setjmp.h>
+
+// If you get an error about node_api.h not being found, run this to find out the include path to use:
+//
+// $ node -e "console.log(path.resolve(process.execPath, '..', '..', 'include', 'node'))"
 #include <node_api.h>
 
 jmp_buf jump_on_crash;
