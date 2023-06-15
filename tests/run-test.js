@@ -25,7 +25,7 @@ async function build() {
       platform: "node",
       minifyWhitespace: true,
       treeShaking: true,
-      plugins: [roc({ rocPlatformMain: path.join(testDir, "platform", "main.roc")})],
+      plugins: [roc()],
     })
     .catch((err) => {
       console.error(err)

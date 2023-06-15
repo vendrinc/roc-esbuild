@@ -79,9 +79,9 @@ function runRoc(args: Array<string>) {
 const buildRocFile = async (
   rocFilePath: string,
   addonPath: string,
-  config: { cc: Array<string>; target: string; optimize: boolean, rocPlatformMain: string },
+  config: { cc: Array<string>; target: string; optimize: boolean },
 ) => {
-  const { cc, target, optimize, rocPlatformMain } = config
+  const { cc, target, optimize } = config
   const rocFileName = path.basename(rocFilePath)
   const rocFileDir = path.dirname(rocFilePath)
   const errors = []
@@ -103,6 +103,10 @@ const buildRocFile = async (
       path.join(rocFileDir, "main.roc"),
     ].filter((part) => part !== ""),
   )
+
+  // TODO this is only necessary until `roc glue` can be run on app modules; once that exists,
+  // we should run glue on the app .roc file and this can go away.
+  const rocPlatformMain = path.join(rocFileDir, "platform", "main.roc")
 
   // Generate the C glue
   runRoc(["glue", path.join(__dirname, "node-glue.roc"), rocFileDir, rocPlatformMain])
