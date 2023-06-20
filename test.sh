@@ -32,29 +32,29 @@ if [ "$os_name" = "Linux" ]; then
         run "node $dir/dist/output.js"
     done
 
+    # TODO this takes so long (presumably due to installing esbuild) on qemu-emulated Linux in Docker
+    # that it's not worth it.
+
     # Now rebuild everything locally and try that (without cross-compilation).
-    echo "Running npm install to refresh roc-esbuild and tests"
-    rm -rf node_modules
-    npm install
-    cd "$test_dir"
-    rm -rf node_modules
-    npm install
+    # echo "Running npm install to refresh roc-esbuild and tests"
+    # npm install
+    # cd "$test_dir"
+    # npm install
 
-    echo "Running tests"
+    # echo "Running tests"
 
-    for dir in "$test_dir"/*/
-    do
-        # Don't treat node_modules as a test dir
-        case "$dir" in
-        *"node_modules"*) continue;;
-        esac
+    # for dir in "$test_dir"/*/
+    # do
+    #     # Don't treat node_modules as a test dir
+    #     case "$dir" in
+    #     *"node_modules"*) continue;;
+    #     esac
 
-        rm "$dir/*.d.ts" # These should get regenerated
-        printf "\n⭐️ Building and running test using roc-esbuild plugin: %s\n\n" "$dir"
-        run "node $test_dir/build.js"
-        run "npx tsc $dir/*.ts"
-        run "$dir/dist/output.js"
-    done
+    #     run "rm -f $dir/*.d.ts" # These should get regenerated
+    #     printf "\n⭐️ Building and running test using roc-esbuild plugin: %s\n\n" "$dir"
+    #     run "node $test_dir/build.js"
+    #     run "$dir/dist/output.js"
+    # done
 else
     # We're running in macOS, so cross-compile
     echo "Running npm install to refresh roc-esbuild and tests"
@@ -75,6 +75,7 @@ else
 
         printf "\n⭐️ Cross-compiling test using roc-esbuild plugin with zig cc: %s\n\n" "$dir"
         run "node $test_dir/build.js $dir --cross-compile"
+        run "npx tsc $dir/main.roc.d.ts" # Check that the generated .d.ts files worked
     done
 fi
 

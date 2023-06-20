@@ -106,7 +106,7 @@ const buildRocFile = async (
 
   // TODO this is only necessary until `roc glue` can be run on app modules; once that exists,
   // we should run glue on the app .roc file and this can go away.
-  const rocPlatformMain = path.join(rocFileDir, "platform.roc")
+  const rocPlatformMain = path.join(rocFileDir, "platform", "main.roc")
 
   // Generate the C glue
   runRoc(["glue", path.join(__dirname, "node-glue.roc"), rocFileDir, rocPlatformMain])
