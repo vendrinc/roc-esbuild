@@ -17,8 +17,6 @@ fs.rmSync(distDir, { recursive: true, force: true });
 fs.mkdirSync(distDir)
 
 async function build() {
-  console.log("Running esbuild.build() with roc() plugin...")
-
   const pluginArg = crossCompile ? { cc: ["zig", "cc"], target: "linux64" } : undefined;
 
   await esbuild
