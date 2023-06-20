@@ -572,7 +572,7 @@ napi_value call_roc(napi_env env, napi_callback_info info) {
     char *msg = last_roc_crash_msg != NULL ? (char *)last_roc_crash_msg
                                            : strsignal(last_signal);
     char *suffix =
-        " encountered while running the `hello` function in main.roc";
+        " while running `main` in main.roc";
     char *buf =
         malloc(strlen(msg) + strlen(suffix) + 1); // +1 for the null terminator
 
