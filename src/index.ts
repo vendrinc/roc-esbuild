@@ -23,7 +23,7 @@ function roc(opts?: { cc?: Array<string>; target?: string, optimize?: boolean })
       // Resolve ".roc" files to a ".node" path with a namespace
       build.onResolve({ filter: /\.roc$/, namespace: "file" }, (args) => {
         return {
-          path: path.isAbsolute(args.path) ? args.path : path.join(args.resolveDir, path.basename(args.path).replace(/\.roc$/, ".node")),
+          path: path.isAbsolute(args.path) ? args.path : path.join(args.resolveDir, path.dirname(args.path), path.basename(args.path).replace(/\.roc$/, ".node")),
           namespace: rocNodeFileNamespace,
         }
       })
