@@ -3,6 +3,6 @@ app "main"
     imports []
     provides [main] to pf
 
-main : Str -> Str
-main = \message ->
-    "TS said: \(message)! 🎉"
+main : { firstName : Str, lastName : Str } -> Str
+main = \{ firstName, lastName } ->
+    "TS says your first name is \(firstName) and your last name is \(lastName)! 🎉"
