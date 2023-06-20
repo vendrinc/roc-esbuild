@@ -120,7 +120,21 @@ const buildRocFile = async (
   //
   // This will be regenerated whenever esbuild runs.
 
-  export function callRoc(arg: string): string
+  type JsonValue = boolean | number | string | null | JsonArray | JsonObject
+  interface JsonArray extends Array<JsonValue> {}
+  interface JsonObject {
+    [key: string]: JsonValue
+  }
+
+  // Currently, this function takes whatever you pass it and serializes it to JSON
+  // for Roc to consume, and then Roc's returned answer also gets serialized to JSON
+  // before JSON.parse gets called on it to convert it back to a TS value.
+  //
+  // This is an "80-20 solution" to get us a lot of functionality without having to
+  // wait for the nicer version to be implemented. The nicer version would not use
+  // JSON as an intermediary, and this part would specify the exact TS types needed
+  // to call the Roc function, based on the Roc function's actual types.
+  declare function callRoc<T extends JsonValue, U extends JsonValue>(input: T): U
   `
 
   fs.writeFileSync(rocFilePath + ".d.ts", typedefs, "utf8")
