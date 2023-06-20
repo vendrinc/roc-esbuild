@@ -21,7 +21,7 @@ async function build() {
 
   await esbuild
     .build({
-      entryPoints: [path.join(testDir, "hello.ts")],
+      entryPoints: [path.join(testDir, "test.ts")],
       bundle: true,
       outfile,
       sourcemap: "inline",

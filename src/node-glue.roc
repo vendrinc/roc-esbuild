@@ -1,5 +1,5 @@
 app "node-glue"
-    packages { pf: "glue-platform/main.roc" }
+    packages { pf: "../vendor/glue-platform/main.roc" }
     imports [pf.Types.{ Types }, pf.File.{ File }, "node-to-roc.c" as content : Str]
     provides [makeGlue] to pf
 

@@ -10,6 +10,13 @@ os_name=$(uname)
 script_dir=$(readlink -f "$(dirname "$0")")
 test_dir=$script_dir/tests
 
+function run {
+  ($1 && printf "\n✅ Passed: %s\n" "$1") || {
+    printf "\n❗️Failed: %s\n" "$1"
+    exit 1
+  }
+}
+
 if [ "$os_name" = "Linux" ]; then
     # We're running in Docker
 
@@ -22,7 +29,7 @@ if [ "$os_name" = "Linux" ]; then
         esac
 
         printf "\n⭐️ Running cross-compiled test: %s\n\n" "$dir"
-        node "$dir/dist/output.js" && printf "\n⭐️ Passed: %s\n\n" "$dir"
+        run "node $dir/dist/output.js"
     done
 
     # Now rebuild everything locally and try that (without cross-compilation).
@@ -42,10 +49,11 @@ if [ "$os_name" = "Linux" ]; then
         *"node_modules"*) continue;;
         esac
 
-        printf "\n⭐️ Building test using roc-esbuild plugin: %s\n\n" "$dir"
-        node "$test_dir/build.js" "$dir" && printf "\n⭐️ Build succeeded: %s\n\n" "$dir"
-        printf "\n⭐️ Running compiled test: %s\n\n" "$dir"
-        node "$dir/dist/output.js" && printf "\n⭐️ Passed: %s\n\n" "$dir"
+        rm "$dir/*.d.ts" # These should get regenerated
+        printf "\n⭐️ Building and running test using roc-esbuild plugin: %s\n\n" "$dir"
+        run "node $test_dir/build.js"
+        run "npx tsc $dir/*.ts"
+        run "$dir/dist/output.js"
     done
 else
     # We're running in macOS, so cross-compile
@@ -66,7 +74,7 @@ else
         esac
 
         printf "\n⭐️ Cross-compiling test using roc-esbuild plugin with zig cc: %s\n\n" "$dir"
-        node "$test_dir/build.js" "$dir" --cross-compile && printf "\n⭐️ Cross-compiled build succeeded: %s\n\n" "$dir"
+        run "node $test_dir/build.js $dir --cross-compile"
     done
 fi
 

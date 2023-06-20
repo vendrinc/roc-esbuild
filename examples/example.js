@@ -4,7 +4,7 @@ const roc = require("roc-esbuild").default
 
 esbuild
   .build({
-    entryPoints: [path.join(__dirname, "src", "hello.ts")],
+    entryPoints: [path.join(__dirname, "src", "test.ts")],
     bundle: true,
     outfile: path.join(__dirname, "dist", "build.js"),
     sourcemap: "inline",

@@ -611,7 +611,7 @@ napi_value init(napi_env env, napi_value exports) {
     return NULL;
   }
 
-  status = napi_set_named_property(env, exports, "hello", fn);
+  status = napi_set_named_property(env, exports, "callRoc", fn);
 
   if (status != napi_ok) {
     return NULL;
