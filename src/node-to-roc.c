@@ -24,7 +24,8 @@
 // an array type, and you can't cast array types.)
 jmp_buf jump_on_crash;
 
-// These are all volatile because they're used in signal handlers but can be set outside the signal handler.
+// These are all volatile because they're used in signal handlers but can be set
+// outside the signal handler.
 volatile int last_signal;
 volatile char *last_roc_crash_msg;
 
@@ -113,7 +114,7 @@ struct RocBytes empty_rocbytes() {
   return ret;
 }
 
-struct RocBytes init_rocbytes(uint8_t *bytes, size_t len) {
+struct RocBytes init_roc_bytes(uint8_t *bytes, size_t len, size_t capacity) {
   if (len == 0) {
     return empty_rocbytes();
   } else {
@@ -129,7 +130,7 @@ struct RocBytes init_rocbytes(uint8_t *bytes, size_t len) {
 
     ret.bytes = new_content;
     ret.len = len;
-    ret.capacity = len;
+    ret.capacity = capacity;
 
     return ret;
   }
@@ -145,6 +146,16 @@ struct RocStr {
 
 struct RocStr empty_roc_str() {
   struct RocStr ret = {
+      .len = 0,
+      .bytes = NULL,
+      .capacity = MASK,
+  };
+
+  return ret;
+}
+
+struct RocBytes empty_roc_bytes() {
+  struct RocBytes ret = {
       .len = 0,
       .bytes = NULL,
       .capacity = MASK,
@@ -176,7 +187,7 @@ struct RocStr roc_str_init_small(uint8_t *bytes, size_t len) {
 
 struct RocStr roc_str_init_large(uint8_t *bytes, size_t len, size_t capacity) {
   // A large RocStr is the same as a List U8 (aka RocBytes) in memory.
-  struct RocBytes roc_bytes = init_rocbytes(bytes, len);
+  struct RocBytes roc_bytes = init_roc_bytes(bytes, len, capacity);
 
   struct RocStr ret = {
       .len = roc_bytes.len,
@@ -233,7 +244,21 @@ void decref_large_str(struct RocStr str) {
   decref_heap_bytes(bytes, __alignof__(uint8_t));
 }
 
-// Turn the given Node string into a RocStr and return it
+void decref_roc_bytes(struct RocBytes arg) {
+  uint8_t *bytes;
+
+  if ((ssize_t)arg.len < 0) {
+    // This is a seamless slice, so the bytes are located in the capacity slot.
+    bytes = (uint8_t *)(arg.capacity << 1);
+  } else {
+    bytes = arg.bytes;
+  }
+
+  decref_heap_bytes(bytes, __alignof__(uint8_t));
+}
+
+// Turn the given Node string into a RocStr and write it into the given RocStr
+// pointer.
 napi_status node_string_into_roc_str(napi_env env, napi_value node_string,
                                      struct RocStr *roc_str) {
   size_t len;
@@ -302,6 +327,50 @@ napi_status node_string_into_roc_str(napi_env env, napi_value node_string,
   return status;
 }
 
+// Turn the given Node string into a RocBytes and write it into the given
+// RocBytes pointer.
+napi_status node_string_into_roc_bytes(napi_env env, napi_value node_string,
+                                       struct RocBytes *roc_bytes) {
+  napi_status status;
+  size_t len;
+
+  // Passing NULL for a buffer (and size 0) will make it write the length of the
+  // string into `len`.
+  // https://nodejs.org/api/n-api.html#napi_get_value_string_utf8
+  status = napi_get_value_string_utf8(env, node_string, NULL, 0, &len);
+
+  if (status != napi_ok) {
+    return status;
+  }
+
+  // Node's "write a string into this buffer" function always writes a null
+  // terminator, so capacity will need to be length + 1.
+  // https://nodejs.org/api/n-api.html#napi_get_value_string_utf8
+  size_t capacity = len + 1;
+
+  // Create a RocBytes and write it into the out param
+  uint8_t *buf = (uint8_t *)roc_alloc(capacity, __alignof__(uint8_t));
+
+  // This writes the actual number of bytes copied into len. Theoretically
+  // they should be the same, but it could be different if the buffer was
+  // somehow smaller. This way we guarantee that the RocBytes does not present
+  // any memory garbage to the user.
+  status =
+      napi_get_value_string_utf8(env, node_string, (char *)buf, capacity, &len);
+
+  if (status != napi_ok) {
+    // Something went wrong, so free the bytes we just allocated before
+    // returning.
+    roc_dealloc((void *)buf, __alignof__(char *));
+
+    return status;
+  }
+
+  *roc_bytes = init_roc_bytes(buf, len, capacity);
+
+  return status;
+}
+
 // Consume the given RocStr (decrement its refcount) after creating a Node
 // string from it.
 napi_value roc_str_into_node_string(napi_env env, struct RocStr roc_str) {
@@ -315,13 +384,10 @@ napi_value roc_str_into_node_string(napi_env env, struct RocStr roc_str) {
     roc_str_contents = (char *)roc_str.bytes;
   }
 
-  napi_status status;
   napi_value answer;
 
-  status = napi_create_string_utf8(env, roc_str_contents, roc_str_len(roc_str),
-                                   &answer);
-
-  if (status != napi_ok) {
+  if (napi_create_string_utf8(env, roc_str_contents, roc_str_len(roc_str),
+                              &answer) != napi_ok) {
     answer = NULL;
   }
 
@@ -329,6 +395,22 @@ napi_value roc_str_into_node_string(napi_env env, struct RocStr roc_str) {
   if (!is_small) {
     decref_large_str(roc_str);
   }
+
+  return answer;
+}
+
+// Consume the given RocBytes (decrement its refcount) after creating a Node
+// string from it. (Assume we know these are UTF-8 bytes.)
+napi_value roc_bytes_into_node_string(napi_env env, struct RocBytes roc_bytes) {
+  napi_value answer;
+
+  if (napi_create_string_utf8(env, (char *)roc_bytes.bytes, roc_bytes.len,
+                              &answer) != napi_ok) {
+    answer = NULL;
+  }
+
+  // Decrement the RocStr because we consumed it.
+  decref_roc_bytes(roc_bytes);
 
   return answer;
 }
@@ -402,8 +484,8 @@ void roc_panic(struct RocStr *roc_str) {
   longjmp(jump_on_crash, 1);
 }
 
-extern void roc__mainForHost_1_exposed_generic(struct RocStr *ret,
-                                               struct RocStr *arg);
+extern void roc__mainForHost_1_exposed_generic(struct RocBytes *ret,
+                                               struct RocBytes *arg);
 
 // Receive a string value from Node and pass it to Roc as a RocStr, then get a
 // RocStr back from Roc and convert it into a Node string.
@@ -413,6 +495,7 @@ napi_value call_roc(napi_env env, napi_callback_info info) {
     // This is *not* the result of a longjmp
 
     // Get the argument passed to the Node function
+    napi_value global, json, stringify, arg_buf[1], node_json_string;
     size_t argc = 1;
     napi_value argv[1];
 
@@ -422,27 +505,74 @@ napi_value call_roc(napi_env env, napi_callback_info info) {
       return NULL;
     }
 
-    napi_value node_arg = argv[0];
-    struct RocStr roc_arg;
+    // Call JSON.stringify(node_arg)
 
-    status = node_string_into_roc_str(env, node_arg, &roc_arg);
-
-    if (status != napi_ok) {
+    // Get the global object
+    if (napi_get_global(env, &global) != napi_ok) {
       return NULL;
     }
 
-    struct RocStr roc_ret;
+    // global.JSON
+    if (napi_get_named_property(env, global, "JSON", &json) != napi_ok) {
+      return NULL;
+    }
+
+    // global.JSON.stringify
+    if (napi_get_named_property(env, json, "stringify", &stringify) !=
+        napi_ok) {
+      return NULL;
+    }
+
+    // Populate stringify's args
+    napi_value node_arg = argv[0];
+
+    arg_buf[0] = node_arg;
+
+    // Call JSON.stringify
+    if (napi_call_function(env, json, stringify, 1, arg_buf,
+                           &node_json_string) != napi_ok) {
+      return NULL;
+    }
+
+    // Translate the JSON string into a Roc List U8
+    struct RocBytes roc_arg;
+
+    if (node_string_into_roc_bytes(env, node_json_string, &roc_arg) != napi_ok) {
+      return NULL;
+    }
+
+    struct RocBytes roc_ret;
+
     // Call the Roc function to populate `roc_ret`'s bytes.
     roc__mainForHost_1_exposed_generic(&roc_ret, &roc_arg);
 
-    // Consume the RocStr to create the Node string.
-    return roc_str_into_node_string(env, roc_ret);
+    // Consume that List U8 to create the Node string.
+    node_json_string = roc_bytes_into_node_string(env, roc_ret);
+
+    napi_value parse;
+
+    // JSON.parse
+    if (napi_get_named_property(env, json, "parse", &parse) != napi_ok) {
+      return NULL;
+    }
+
+    // Reuse the same arg_buf as last time
+    arg_buf[0] = node_json_string;
+
+    // Call JSON.parse on what we got back from Roc
+    napi_value answer;
+
+    if (napi_call_function(env, json, parse, 1, arg_buf, &answer) != napi_ok) {
+      return NULL;
+    }
+
+    return answer;
   } else {
     // This *is* the result of a longjmp
     char *msg = last_roc_crash_msg != NULL ? (char *)last_roc_crash_msg
                                            : strsignal(last_signal);
     char *suffix =
-        " encountered while running the `hello` function in main.roc";
+        " while running `main` in main.roc";
     char *buf =
         malloc(strlen(msg) + strlen(suffix) + 1); // +1 for the null terminator
 

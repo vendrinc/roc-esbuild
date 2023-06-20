@@ -76,7 +76,7 @@ if [ "$os_name" != "Linux" ]; then
     # Build the docker image, storing output in a tempfile and then printing it only if it failed.
     docker_image_name=roc-esbuild-tests
 
-    docker build -t $docker_image_name "$test_dir"
+   docker build -t $docker_image_name "$test_dir"
 
     # Run the tests again in Docker
     # Specify --platform explicitly because Docker gives a warning if the one specified
