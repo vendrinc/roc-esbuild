@@ -72,10 +72,10 @@ const ccTargetFromRocTarget = (rocTarget: string) => {
   }
 }
 
+const rocBinPath = path.resolve(__dirname.replace("dist", ""), "node_modules", "roc-lang", "bin", "roc");
+
 function runRoc(args: Array<string>) {
-  const rocExit = spawnSync("npx", ["--yes", "roc-lang@0.0.0-2023-05-31-nightly-modified-linux"].concat(args), {
-    stdio: "inherit",
-  })
+  const rocExit = spawnSync(rocBinPath, args, { stdio: "inherit" })
 
   if (rocExit.error) {
     throw new Error("During the npm preinstall hook, `roc build` errored with " + rocExit.error)
