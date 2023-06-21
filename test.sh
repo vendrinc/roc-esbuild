@@ -74,7 +74,7 @@ else
         esac
 
         printf "\n⭐️ Cross-compiling test using roc-esbuild plugin with zig cc: %s\n\n" "$dir"
-        run "node $test_dir/build.js $dir --cross-compile"
+        run "node $test_dir/build.js $dir --cross-compile=linux-x64"
         run "npx tsc $dir/main.roc.d.ts" # Check that the generated .d.ts files worked
     done
 fi

@@ -15,11 +15,17 @@ const execFile = util.promisify(child_process.execFile)
 
 const ccTargetFromRocTarget = (rocTarget: string) => {
   switch (rocTarget) {
-    case "linux64":
+    case "macos-arm64":
+      return "aarch64-apple-darwin"
+    case "macos-x64":
+      return "x86_64-apple-darwin"
+    case "linux-arm64":
+      return "aarch64-linux-gnu"
+    case "linux-x64":
       return "x86_64-linux-gnu"
-    case "linux32":
+    case "linux-x32":
       return "i386-linux-gnu"
-    case "windows64":
+    case "windows-x64":
       return "x86_64-windows-gnu"
     case "wasm32":
       return "wasm32-unknown-unknown"
@@ -40,7 +46,7 @@ const ccTargetFromRocTarget = (rocTarget: string) => {
           targetStr = "i386"
           break
         default:
-          throw new Error(`roc-esbuild does not currently support building for this architecture: ${os.arch()}`)
+          throw new Error(`roc-esbuild does not currently support building for this CPU architecture: ${os.arch()}`)
       }
 
       targetStr += "-"

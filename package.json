@@ -20,7 +20,7 @@
   "author": "Richard Feldman",
   "license": "UPL-1.0",
   "optionalDependencies": {
-    "roc-lang": "^0.0.0-2023-05-31-nightly-modified-linux"
+    "roc-lang": "0.0.0-2023-05-31-nightly-modified-linux-and-macos"
   },
   "devDependencies": {
     "@ava/typescript": "^4.0.0",

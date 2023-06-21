@@ -2,7 +2,7 @@
 const testDir = process.argv[2]
 
 // Accepts a CLI arg for whether to cross-compile
-const crossCompile = process.argv[3] === "--cross-compile"
+const crossCompile = process.argv[3].startsWith("--cross-compile") ? process.argv[3].replace(/^--cross-compile=/, "") : undefined
 
 const path = require("path")
 const fs = require("fs")
@@ -17,7 +17,7 @@ fs.rmSync(distDir, { recursive: true, force: true });
 fs.mkdirSync(distDir)
 
 async function build() {
-  const pluginArg = crossCompile ? { cc: ["zig", "cc"], target: "linux64" } : undefined;
+  const pluginArg = crossCompile ? { cc: ["zig", "cc"], target: crossCompile } : undefined;
 
   await esbuild
     .build({
