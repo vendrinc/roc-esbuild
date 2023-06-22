@@ -20,7 +20,7 @@
   "author": "Richard Feldman",
   "license": "UPL-1.0",
   "optionalDependencies": {
-    "roc-lang": "0.0.0-2023-06-21-nightly"
+    "roc-lang": "0.0.0-2023-06-21-nightly-buster"
   },
   "devDependencies": {
     "@ava/typescript": "^4.0.0",
