@@ -76,7 +76,7 @@ const rootDir = path.resolve(__dirname.replace("dist", ""))
 const rocNodeModulesBin = path.join(rootDir, "node_modules", "roc-lang", "bin", "roc")
 
 let rocBin = ""
-let rocDefaultArgs = []
+let rocDefaultArgs: Array<string> = []
 
 // roc-lang is an optional dependency, so it may not have been installed.
 // Fall back on npx if it's not there.
@@ -87,7 +87,7 @@ if (fs.existsSync(rocNodeModulesBin)) {
   const rocLangVersion = packageJson.optionalDependencies['roc-lang'];
 
   rocBin = "npx"
-  rocDefaultArgs = ["roc-lang@".concat(rocLangVersion)]
+  rocDefaultArgs = ["--yes", "roc-lang@".concat(rocLangVersion)]
 }
 
 function runRoc(args: Array<string>) {
