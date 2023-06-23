@@ -1,6 +1,6 @@
 {
   "name": "roc-esbuild",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "Load .roc modules from JS or TS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -20,7 +20,7 @@
   "author": "Richard Feldman",
   "license": "UPL-1.0",
   "optionalDependencies": {
-    "roc-lang": "0.0.0-2023-06-21-nightly-buster"
+    "roc-lang": "0.0.1-2023-06-21-nightly-buster"
   },
   "devDependencies": {
     "@ava/typescript": "^4.0.0",
