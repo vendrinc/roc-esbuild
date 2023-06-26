@@ -74,7 +74,7 @@ const ccTargetFromRocTarget = (rocTarget: string) => {
 
 const rootDir = path.resolve(__dirname.replace("dist", ""))
 const packageJson = require(path.join(rootDir, "package.json"))
-const rocLangVersion = packageJson.optionalDependencies['roc-lang'];
+const rocLangVersion = packageJson.dependencies['roc-lang'];
 
 // roc-lang is an optional dependency, so it may not have been installed.
 // Make sure we're getting the exact version we need.
