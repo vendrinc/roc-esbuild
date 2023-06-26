@@ -73,25 +73,15 @@ const ccTargetFromRocTarget = (rocTarget: string) => {
 }
 
 const rootDir = path.resolve(__dirname.replace("dist", ""))
-const rocNodeModulesBin = path.join(rootDir, "node_modules", "roc-lang", "bin", "roc")
-
-let rocBin = ""
-let rocDefaultArgs: Array<string> = []
+const packageJson = require(path.join(rootDir, "package.json"))
+const rocLangVersion = packageJson.optionalDependencies['roc-lang'];
 
 // roc-lang is an optional dependency, so it may not have been installed.
-// Fall back on npx if it's not there.
-if (fs.existsSync(rocNodeModulesBin)) {
-  rocBin = rocNodeModulesBin
-} else {
-  const packageJson = require(path.join(rootDir, "package.json"))
-  const rocLangVersion = packageJson.optionalDependencies['roc-lang'];
-
-  rocBin = "npx"
-  rocDefaultArgs = ["--yes", "roc-lang@".concat(rocLangVersion)]
-}
+// Make sure we're getting the exact version we need.
+let npxArgs: Array<string> = ["--yes", "roc-lang@".concat(rocLangVersion)]
 
 function runRoc(args: Array<string>) {
-  const rocExit = spawnSync(rocBin, rocDefaultArgs.concat(args), { stdio: "inherit" })
+  const rocExit = spawnSync("npx", npxArgs.concat(args), { stdio: "inherit" })
 
   if (rocExit.error) {
     throw new Error("During the npm preinstall hook, `roc build` errored with " + rocExit.error)
