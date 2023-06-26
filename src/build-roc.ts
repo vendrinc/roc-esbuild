@@ -77,11 +77,18 @@ const packageJson = require(path.join(rootDir, "package.json"))
 const rocLangVersion = packageJson.dependencies['roc-lang'];
 
 function runRoc(args: Array<string>) {
+  const rocLangInstalledPath = path.join(rootDir, "node_modules", "roc-lang", "package.json");
+  const rocLangInstalledVersion = JSON.parse(fs.readFileSync(rocLangInstalledPath)).version;
+
+  if (rocLangInstalledVersion !== rocLangVersion) {
+    throw new Error(`roc-lang installed version was ${rocLangInstalledVersion} but roc-esbuild requires ${rocLangVersion}`);
+  }
+
   const rocLangBin = path.join(rootDir, "node_modules", ".bin", "roc");
   const rocExit = spawnSync(rocLangBin, args, { stdio: "inherit" });
 
   if (rocExit.error) {
-    throw new Error("During the npm preinstall hook, `roc build` errored with " + rocExit.error)
+    throw new Error("`roc build` errored with " + rocExit.error)
   }
 }
 
