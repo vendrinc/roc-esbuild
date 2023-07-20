@@ -37,8 +37,18 @@ void signal_handler(int sig) {
   longjmp(jump_on_crash, 1);
 }
 
-void *roc_alloc(size_t size, unsigned int alignment) {
-  return aligned_alloc(alignment, size);
+void *roc_alloc(size_t size, unsigned int u32align) {
+  size_t align = (size_t)u32align;
+
+  // Note: aligned_alloc only accepts alignments that are
+  // at least sizeof(void*) and also a power of two,
+  // so make sure it satisfies both of those.
+
+  // aligned_alloc also requires that the given size is a multiple
+  // of the alignment, so round to the nearest multiple of align.
+  size = (size + align - 1) & ~(align - 1);
+
+  return aligned_alloc(align, size);
 }
 
 void *roc_realloc(void *ptr, size_t new_size, size_t old_size,
@@ -122,6 +132,13 @@ struct RocBytes init_roc_bytes(uint8_t *bytes, size_t len, size_t capacity) {
     size_t refcount_size = sizeof(size_t);
     uint8_t *new_refcount =
         (uint8_t *)roc_alloc(len + refcount_size, __alignof__(size_t));
+
+    if (new_refcount == NULL) {
+      // TODO handle this more gracefully!
+      fprintf(stderr, "roc_alloc failed during init_roc_bytes in nodeJS; aborting\n");
+      abort();
+    }
+
     uint8_t *new_content = new_refcount + refcount_size;
 
     ((ssize_t *)new_refcount)[0] = REFCOUNT_ONE;
@@ -348,8 +365,16 @@ napi_status node_string_into_roc_bytes(napi_env env, napi_value node_string,
   // https://nodejs.org/api/n-api.html#napi_get_value_string_utf8
   size_t capacity = len + 1;
 
-  // Create a RocBytes and write it into the out param
-  uint8_t *buf = (uint8_t *)roc_alloc(capacity, __alignof__(uint8_t));
+  // Create a RocBytes and write it into the out param. Make sure we pass
+  // an align of a pointer, because roc_alloc calls aligned_alloc, which
+  // will not accept alignment values lower than the align of a pointer!
+  uint8_t *buf = (uint8_t *)roc_alloc(capacity, __alignof__(uint8_t*));
+
+  // If allocation failed, bail out.
+  if (buf == NULL) {
+    fprintf(stderr, "WARNING: roc_alloc failed during node_string_into_roc_bytes in nodeJS\n");
+    return napi_generic_failure;
+  }
 
   // This writes the actual number of bytes copied into len. Theoretically
   // they should be the same, but it could be different if the buffer was
