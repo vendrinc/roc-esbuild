@@ -165,7 +165,7 @@ export function callRoc<T extends JsonValue, U extends JsonValue>(input: T): U
   //     V=1 make
   //
   // The Makefile that node-gyp generates inside build/ uses a magical V=1 env var to print
-  // what tcc and g++ commands it's doing; this is much nicer than strace output because they
+  // what cc and g++ commands it's doing; this is much nicer than strace output because they
   // spawn these processes with mmap and clone3 rather than exceve, so you can't really see
   // what the arguments to cc and g++ are from there.
   //
@@ -173,7 +173,7 @@ export function callRoc<T extends JsonValue, U extends JsonValue>(input: T): U
   // and adjust the input/output directories as needed.
 
   // This script is a way to build Native Node Addons without using node-gyp.
-  // It uses Zig for cross-platform builds, which enables:
+  // It supports using Zig for cross-platform builds, which enables:
   // - Faster builds than node-gyp, which spawns a Python process that generates a Makefile which then runs cc and g++.
   // - Building native Node Addons for a given target operating system, without needing to use something like Docker.
   //   We need this so that we can build Roc addons for Node locally on Apple Silicon developer machines and then ship the
@@ -223,7 +223,8 @@ export function callRoc<T extends JsonValue, U extends JsonValue>(input: T): U
     "V8_DEPRECATION_WARNINGS",
     "V8_IMMINENT_DEPRECATION_WARNINGS",
     "_GLIBCXX_USE_CXX11_ABI=1",
-    "_LARGEFIL_SOURCE",
+    "_DARWIN_USE_64_BIT_INODE=1",
+    "_LARGEFILE_SOURCE",
     "_FILE_OFFSET_BITS=64",
     "__STDC_FORMAT_MACROS",
     "OPENSSL_NO_PINSHARED",
@@ -254,13 +255,22 @@ export function callRoc<T extends JsonValue, U extends JsonValue>(input: T): U
       includes,
       "-fPIC",
       "-pthread",
+      optimize ? "-O3" : "",
+      // This was in the original node-gyp build, but it generates a separate directory.
+      // (Maybe it also adds the symbols to the binary? Further investigation needed.)
+      // buildingForMac ? "-gdwarf-2" : "",
+
+      // Many roc hosts need aligned_alloc, which was added in macOS 10.15.
+      buildingForMac ? "-mmacosx-version-min=10.15" : "",
       "-Wall",
       "-Wextra",
+      "-Wendif-labels",
+      "-W",
       "-Wno-unused-parameter",
-      optimize ? "-O3" : "",
-      "-fno-omit-frame-pointer",
+      buildingForMac ? "-fno-strict-aliasing" : "-fno-omit-frame-pointer",
+      buildingForMac ? "-Wl,-undefined,dynamic_lookup" : "",
       libraries.join(" "),
-      "-shared",
+      buildingForLinux ? "-shared" : "",
     ])
     .flat()
     .filter((part) => part !== "")

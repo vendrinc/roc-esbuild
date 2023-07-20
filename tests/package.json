@@ -13,7 +13,7 @@
   "author": "Richard Feldman",
   "license": "UPL-1.0",
   "devDependencies": {
-    "esbuild": "^0.17.19",
+    "esbuild": "0.14.39",
     "roc-esbuild": "file:.."
   }
 }
