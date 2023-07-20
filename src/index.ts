@@ -7,15 +7,11 @@
 import type { PluginBuild, Plugin } from "esbuild";
 import path from "path"
 
-const buildRocFile = require("./build-roc.ts")
+const buildRocFile = require("./build-roc.js")
 const rocNodeFileNamespace = "roc-node-file"
 
 function roc(opts?: { cc?: Array<string>; target?: string, optimize?: boolean }) : Plugin {
   const config = opts !== undefined ? opts : {}
-
-  // The C compiler to use - e.g. you can specify `["zig" "cc"]` here to use Zig instead of the defualt `cc`.
-  const cc = config.hasOwnProperty("cc") ? config.cc : ["cc"]
-  const target = config.hasOwnProperty("target") ? config.target : ""
 
   return {
     name: "roc",
@@ -35,7 +31,7 @@ function roc(opts?: { cc?: Array<string>; target?: string, optimize?: boolean })
         // Load ".roc" files, generate .d.ts files for them, compile and link them into native Node addons,
         // and tell esbuild how to bundle those addons.
         const rocFilePath = args.path.replace(/\.node$/, ".roc")
-        const { errors } = buildRocFile(rocFilePath, args.path, { target, cc }) // TODO get `target` arg from esbuild config
+        const { errors } = buildRocFile(rocFilePath, args.path, config) // TODO get `target` arg from esbuild config
 
         return {
           contents: `

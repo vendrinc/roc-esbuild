@@ -597,7 +597,7 @@ napi_value call_roc(napi_env env, napi_callback_info info) {
     char *msg = last_roc_crash_msg != NULL ? (char *)last_roc_crash_msg
                                            : strsignal(last_signal);
     char *suffix =
-        " while running `main` in main.roc";
+        " while running `main` in a .roc file";
     char *buf =
         malloc(strlen(msg) + strlen(suffix) + 1); // +1 for the null terminator
 
