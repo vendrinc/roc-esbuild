@@ -4,16 +4,16 @@
 // 2. Invoke `zig` to convert that binary into a native Node addon (a .node file)
 // 3. Copy the binary and its .d.ts type definitions into the appropriate directory
 
-import fs from "fs"
-import os from "os"
-import path from "path"
-import child_process from "child_process"
-import util from "util"
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const child_process = require("child_process");
+const util = require("util");
 
 const { execSync, spawnSync } = child_process
 const execFile = util.promisify(child_process.execFile)
 
-const ccTargetFromRocTarget = (rocTarget: string) => {
+const ccTargetFromRocTarget = (rocTarget/*: string*/) => {
   switch (rocTarget) {
     case "macos-arm64":
       return "aarch64-apple-darwin"
@@ -72,28 +72,24 @@ const ccTargetFromRocTarget = (rocTarget: string) => {
   }
 }
 
-const rootDir = path.resolve(__dirname.replace("dist", ""))
-const packageJson = require(path.join(rootDir, "package.json"))
-const rocLangVersion = packageJson.dependencies['roc-lang'];
-
-// roc-lang is an optional dependency, so it may not have been installed.
-// Make sure we're getting the exact version we need.
-let npxArgs: Array<string> = ["--yes", "roc-lang@".concat(rocLangVersion)]
-
-function runRoc(args: Array<string>) {
-  const rocExit = spawnSync("npx", npxArgs.concat(args), { stdio: "inherit" })
+function runRoc(args/*: Array<string>*/) {
+  const rocExit = spawnSync("npx", ["--yes", "roc-lang"].concat(args), { stdio: "inherit" })
 
   if (rocExit.error) {
     throw new Error("During the npm preinstall hook, `roc build` errored with " + rocExit.error)
   }
 }
 
-const buildRocFile = async (
-  rocFilePath: string,
-  addonPath: string,
-  config: { cc: Array<string>; target: string; optimize: boolean },
+const buildRocFile = (
+  rocFilePath/*: string*/,
+  addonPath/*: string*/,
+  config/*: { cc: Array<string>; target: string; optimize: boolean }*/,
 ) => {
-  const { cc, target, optimize } = config
+  // The C compiler to use - e.g. you can specify `["zig" "cc"]` here to use Zig instead of the defualt `cc`.
+  const cc = config.hasOwnProperty("cc") ? config.cc : ["cc"]
+  const target = config.hasOwnProperty("target") ? config.target : ""
+  const optimize = config.hasOwnProperty("optimize") ? config.optimize : ""
+
   const rocFileName = path.basename(rocFilePath)
   const rocFileDir = path.dirname(rocFilePath)
   const errors = []
@@ -112,7 +108,7 @@ const buildRocFile = async (
       target === "" ? "" : `--target=${target}`,
       optimize ? "--optimize" : "",
       "--no-link",
-      path.join(rocFileDir, "main.roc"),
+      rocFilePath
     ].filter((part) => part !== ""),
   )
 
