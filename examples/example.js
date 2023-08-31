@@ -1,6 +1,6 @@
 const path = require("path")
 const esbuild = require("esbuild")
-const roc = require("roc-esbuild").default
+const { roc } = require("roc-esbuild").default
 
 esbuild
   .build({

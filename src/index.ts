@@ -59,4 +59,4 @@ function roc(opts?: { cc?: Array<string>; target?: string, optimize?: boolean })
   }
 }
 
-export default roc
+export default { roc, buildRocFile }

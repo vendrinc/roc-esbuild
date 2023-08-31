@@ -1,6 +1,6 @@
 {
   "name": "roc-esbuild",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "Load .roc modules from JS or TS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
