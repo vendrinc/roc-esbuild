@@ -75,8 +75,8 @@ const ccTargetFromRocTarget = (rocTarget/*: string*/) => {
 function runRoc(args/*: Array<string>*/) {
   const rocExit = spawnSync("npx", ["--yes", "roc-lang"].concat(args), { stdio: "inherit" })
 
-  if (rocExit.error) {
-    throw new Error("During the npm preinstall hook, `roc build` errored with " + rocExit.error)
+  if (rocExit.error || rocExit.status != 0) {
+    throw new Error("`roc " + args.join(" ") + "` exited with status code " + rocExit.status)
   }
 }
 
