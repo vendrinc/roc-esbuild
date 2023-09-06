@@ -79,7 +79,7 @@ function runRoc(args/*: Array<string>*/) {
   let rocPath;
 
   while (currentDir) {
-    const potentialRocPath = path.join(currentDir, "node_modules", "roc-lang", "roc");
+    const potentialRocPath = path.join(currentDir, "node_modules", "roc-lang", "bin", "roc");
 
     // If we are dealing with a symlink (which pnpm uses), resolve it
     const resolvedRocPath = fs.existsSync(potentialRocPath) ? fs.realpathSync(potentialRocPath) : null;

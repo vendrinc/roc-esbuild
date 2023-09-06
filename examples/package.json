@@ -10,8 +10,8 @@
   "author": "Richard Feldman",
   "license": "UPL-1.0",
   "devDependencies": {
-    "esbuild": "^0.17.19",
+    "esbuild": "^0.14.39",
     "jest": "^29.6.1",
-    "roc-esbuild": "file:../package"
+    "roc-esbuild": "file:.."
   }
 }
