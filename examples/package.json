@@ -12,6 +12,6 @@
   "devDependencies": {
     "esbuild": "^0.17.19",
     "jest": "^29.6.1",
-    "roc-esbuild": "file:.."
+    "roc-esbuild": "file:../package"
   }
 }
