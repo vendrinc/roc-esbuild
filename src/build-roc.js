@@ -73,7 +73,35 @@ const ccTargetFromRocTarget = (rocTarget/*: string*/) => {
 }
 
 function runRoc(args/*: Array<string>*/) {
-  const rocExit = spawnSync("npx", ["--yes", "roc-lang"].concat(args), { stdio: "inherit" })
+  // Locate the path to the `roc` binary. This could be in our node_modules, or in the node_modules of an ancestor
+  // directory, due to how npm deduplicates things. It could also be a symlink if we were installed with pnpm.
+  let currentDir = __dirname;
+  let rocPath;
+
+  while (currentDir) {
+    const potentialRocPath = path.join(currentDir, "node_modules", "roc-lang", "roc");
+
+    // If we are dealing with a symlink (which pnpm uses), resolve it
+    const resolvedRocPath = fs.existsSync(potentialRocPath) ? fs.realpathSync(potentialRocPath) : null;
+
+    if (resolvedRocPath && fs.existsSync(resolvedRocPath)) {
+      rocPath = resolvedRocPath;
+      break;
+    }
+
+    // Go to the parent directory
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      break;
+    }
+    currentDir = parentDir;
+  }
+
+  if (!rocPath) {
+    throw new Error("roc-esbuild could not find its roc-lang dependency in either its node_modules or any parent node_modules. This means it could not find the `roc` binary it needs to execute!");
+  }
+
+  const rocExit = spawnSync(rocPath, args, { stdio: "inherit" })
 
   if (rocExit.error || rocExit.status != 0) {
     throw new Error("`roc " + args.join(" ") + "` exited with status code " + rocExit.status)
