@@ -21,7 +21,7 @@
   "author": "Richard Feldman",
   "license": "UPL-1.0",
   "dependencies": {
-    "roc-lang": "0.0.1-2023-06-21-nightly-buster"
+    "roc-lang": "0.0.2-2023-09-06-nightly-v2"
   },
   "peerDependencies": {
     "esbuild": "^0.14.39"

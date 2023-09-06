@@ -72,36 +72,25 @@ const ccTargetFromRocTarget = (rocTarget/*: string*/) => {
   }
 }
 
+const rocNotFoundErr = "roc-esbuild could not find its roc-lang dependency in either its node_modules or any parent node_modules. This means it could not find the `roc` binary it needs to execute!";
+
 function runRoc(args/*: Array<string>*/) {
-  // Locate the path to the `roc` binary. This could be in our node_modules, or in the node_modules of an ancestor
-  // directory, due to how npm deduplicates things. It could also be a symlink if we were installed with pnpm.
-  let currentDir = __dirname;
-  let rocPath;
+  let rocLangFile = null;
 
-  while (currentDir) {
-    const potentialRocPath = path.join(currentDir, "node_modules", "roc-lang", "bin", "roc");
-
-    // If we are dealing with a symlink (which pnpm uses), resolve it
-    const resolvedRocPath = fs.existsSync(potentialRocPath) ? fs.realpathSync(potentialRocPath) : null;
-
-    if (resolvedRocPath && fs.existsSync(resolvedRocPath)) {
-      rocPath = resolvedRocPath;
-      break;
-    }
-
-    // Go to the parent directory
-    const parentDir = path.dirname(currentDir);
-    if (parentDir === currentDir) {
-      break;
-    }
-    currentDir = parentDir;
+  try {
+    // This will return the path of roc-lang's exports: { ".": ... } file
+    rocLangFile = require.resolve("roc-lang");
+  } catch (err) {
+    throw new Error(rocNotFoundErr);
   }
 
-  if (!rocPath) {
-    throw new Error("roc-esbuild could not find its roc-lang dependency in either its node_modules or any parent node_modules. This means it could not find the `roc` binary it needs to execute!");
+  const rocBinaryPath = rocLangFile ? path.join(path.dirname(rocLangFile), "bin", "roc") : null;
+
+  if (!rocBinaryPath || !fs.existsSync(rocBinaryPath)) {
+    throw new Error(rocNotFoundErr);
   }
 
-  const rocExit = spawnSync(rocPath, args, { stdio: "inherit" })
+  const rocExit = spawnSync(rocBinaryPath, args, { stdio: "inherit" })
 
   if (rocExit.error || rocExit.status != 0) {
     throw new Error("`roc " + args.join(" ") + "` exited with status code " + rocExit.status)
