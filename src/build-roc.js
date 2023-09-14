@@ -90,10 +90,10 @@ function runRoc(args/*: Array<string>*/) {
     throw new Error(rocNotFoundErr);
   }
 
-  const rocExit = spawnSync(rocBinaryPath, args, { stdio: "inherit" })
+  const output = spawnSync(rocBinaryPath, args)
 
-  if (rocExit.error || rocExit.status != 0) {
-    throw new Error("`roc " + args.join(" ") + "` exited with status code " + rocExit.status)
+  if (output.status != 0) {
+    throw new Error("`roc " + args.join(" ") + "` exited with status code " + output.status + ". stderr was:\n\n" + output.stderr.toString())
   }
 }
 
