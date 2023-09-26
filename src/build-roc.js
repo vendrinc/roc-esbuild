@@ -110,8 +110,8 @@ const buildRocFile = (
   const rocFileName = path.basename(rocFilePath)
   const rocFileDir = path.dirname(rocFilePath)
   const errors = []
-  const buildingForMac = target === "mac64" || (target === "" && os.platform() === "darwin")
-  const buildingForLinux = target === "linux" || (target === "" && os.platform() === "linux")
+  const buildingForMac = target.startsWith("macos") || (target === "" && os.platform() === "darwin")
+  const buildingForLinux = target.startsWith("linux") || (target === "" && os.platform() === "linux")
 
   // Build the initial Roc object binary for the current OS/architecture.
   //
