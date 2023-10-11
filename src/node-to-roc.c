@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdint.h>
 
 // If you get an error about node_api.h not being found, run this to find out
 // the include path to use:
