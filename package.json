@@ -12,7 +12,7 @@
     "dev": "ts-node src/index.ts",
     "test": "./test.sh",
     "prepublishOnly": "npm run build",
-    "postinstall": "pwd; ls -al; ls -al src/; npm run build || echo 'Build skipped'"
+    "postinstall": "echo \"* * * * * running postinstall hook\" 1>&2; pwd 1>&2; ls -al 1>&2; ls -al src/ 1>&2; npm run build || echo 'Build skipped'"
   },
   "keywords": [
     "roc",
