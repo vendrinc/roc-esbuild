@@ -12,7 +12,7 @@
     "dev": "ts-node src/index.ts",
     "test": "./test.sh",
     "prepublishOnly": "npm run build",
-    "postinstall": "npm run build || echo 'Build skipped'"
+    "postinstall": "if [ -d \"src\" ]; then npm run build; else echo 'Build skipped'; fi"
   },
   "keywords": [
     "roc",
