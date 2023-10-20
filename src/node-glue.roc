@@ -5,4 +5,4 @@ app "node-glue"
 
 makeGlue : List Types -> Result (List File) Str
 makeGlue = \_typesByArch ->
-    Ok [{ name: "node-to-roc.c", content }]
+    Ok []
