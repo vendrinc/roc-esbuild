@@ -13,7 +13,7 @@ const util = require("util");
 const { execSync, spawnSync } = child_process
 const execFile = util.promisify(child_process.execFile)
 
-const ccTargetFromRocTarget = (rocTarget/*: string*/) => {
+const ccTargetFromRocTarget = (rocTarget: string) => {
   switch (rocTarget) {
     case "macos-arm64":
       return "aarch64-apple-darwin"
@@ -74,7 +74,7 @@ const ccTargetFromRocTarget = (rocTarget/*: string*/) => {
 
 const rocNotFoundErr = "roc-esbuild could not find its roc-lang dependency in either its node_modules or any parent node_modules. This means it could not find the `roc` binary it needs to execute!";
 
-function runRoc(args/*: Array<string>*/) {
+function runRoc(args: Array<string>) {
   let rocLangFile = null;
 
   try {
@@ -98,9 +98,9 @@ function runRoc(args/*: Array<string>*/) {
 }
 
 const buildRocFile = (
-  rocFilePath/*: string*/,
-  addonPath/*: string*/,
-  config/*: { cc: Array<string>; target: string; optimize: boolean }*/,
+  rocFilePath: string,
+  addonPath: string,
+  config: { cc: Array<string>; target: string; optimize: boolean },
 ) => {
   // The C compiler to use - e.g. you can specify `["zig" "cc"]` here to use Zig instead of the defualt `cc`.
   const cc = config.hasOwnProperty("cc") ? config.cc : ["cc"]
