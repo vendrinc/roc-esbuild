@@ -8,7 +8,7 @@
   "scripts": {
     "check": "node clang-tidy.js && clang-format -n src/*.c && tsc --noEmit",
     "format": "clang-format -i src/*.c",
-    "build": "esbuild --bundle src/index.ts --outfile=dist/index.js --platform=node --target=node16.16.0 --sourcemap && cp src/*.roc dist/ && cp src/*.c dist/",
+    "build": "esbuild --bundle src/index.ts --outfile=dist/index.js --platform=node --target=node16.16.0 --sourcemap && tsc --declaration --emitDeclarationOnly --outDir dist && cp src/*.roc dist/ && cp src/*.c dist/",
     "dev": "ts-node src/index.ts",
     "test": "./test.sh",
     "prepublishOnly": "npm run build",
