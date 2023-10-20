@@ -4,7 +4,7 @@
   "description": "Load .roc modules from JS or TS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist/*.js", "dist/*.js.map", "dist/*.c", "dist/*.roc", "vendor/glue-platform/*.roc"],
+  "files": ["dist/*.js", "dist/*.js.map", "dist/*.c", "dist/*.roc", "dist/*.d.ts", "vendor/glue-platform/*.roc"],
   "scripts": {
     "check": "node clang-tidy.js && clang-format -n src/*.c && tsc --noEmit",
     "format": "clang-format -i src/*.c",
