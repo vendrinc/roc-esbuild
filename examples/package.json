@@ -5,13 +5,15 @@
   "main": "example.js",
   "scripts": {
     "start": "node example.js",
-    "test": "jest --config=jest.config.ts"
+    "test": "node -r ts-node/register node_modules/.bin/jest --config=jest.config.ts"
   },
   "author": "Richard Feldman",
   "license": "UPL-1.0",
   "devDependencies": {
     "esbuild": "^0.14.39",
     "jest": "^29.6.1",
-    "roc-esbuild": "file:.."
+    "roc-esbuild": "file:..",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
   }
 }

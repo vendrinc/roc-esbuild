@@ -7,7 +7,7 @@
 import type { PluginBuild, Plugin } from "esbuild";
 import path from "path"
 
-const buildRocFile = require("./build-roc.js")
+const buildRocFile = require("./build-roc")
 const rocNodeFileNamespace = "roc-node-file"
 
 function roc(opts?: { cc?: Array<string>; target?: string, optimize?: boolean }) : Plugin {
