@@ -30,7 +30,7 @@ makeGlue = \typesByArch ->
     Ok [
         {
             # TODO get the input filename and make the output .d.ts file be based on that
-            name: "main.d.ts",
+            name: "main.roc.d.ts",
             content: dtsFileContent,
         },
     ]
@@ -54,13 +54,13 @@ addEntryPoint = \buf, types, name, id ->
 
                 ret = typeName types rocFn.ret
 
-                "(\(arguments)) -> \(ret)"
+                "(\(arguments)): \(ret)"
 
             _ ->
                 ret = typeName types id
-                "() -> \(ret)"
+                "(): \(ret)"
 
-    "\(buf)\n\nexport function \(name)\(signature);"
+    "\(buf)\nexport function \(name)\(signature);\n"
 
 # addShape : Types -> (Str, Shape, TypeId -> Str)
 # addShape = \types -> \buf, shape, typeId ->
@@ -123,7 +123,11 @@ typeName = \types, id ->
         RocBox _elem -> crash "TODO generate types for RocBox"
         RocResult _ok _err -> crash "TODO generate types for RocResult"
         RecursivePointer content -> typeName types content
-        Struct { name } -> escapeKW name
+        Struct { fields } ->
+            when fields is
+                HasNoClosure list -> recordTypeName types list
+                HasClosure list -> recordTypeName types list
+
         TagUnionPayload { name } -> escapeKW name
         TagUnion (NonRecursive { name }) -> escapeKW name
         TagUnion (Recursive { name }) -> escapeKW name
@@ -134,6 +138,7 @@ typeName = \types, id ->
         TagUnion (SingleTagStruct { name }) -> escapeKW name
         Function { functionName } -> escapeKW functionName
 
+escapeKW : Str -> Str
 escapeKW = \input ->
     if Set.contains reservedKeywords input then
         "roc_\(input)"
@@ -213,6 +218,15 @@ toArgStr = \args, types, fmt ->
                 state
                 |> Str.concat ", "
                 |> Str.concat argStr
+
+recordTypeName : Types, List { name : Str, id : TypeId }* -> Str
+recordTypeName = \types, fields ->
+    fieldTypes =
+        fields
+        |> List.map \{name, id} -> "\(name): \(typeName types id)"
+        |> Str.joinWith ", "
+
+    "{ \(fieldTypes) }"
 
 isUnit : Shape -> Bool
 isUnit = \shape ->
