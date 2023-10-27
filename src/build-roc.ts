@@ -199,7 +199,7 @@ export function callRoc<T extends JsonValue, U extends JsonValue>(input: T): U
   const rocLibDir = rocFileDir
 
   const rocLib = path.join(rocLibDir, rocFileName.replace(/\.roc$/, ".o"))
-  const cGluePath = path.join(rocLibDir, "node-to-roc.c")
+  const cGluePath = path.join(__dirname, "node-to-roc.c")
   const includeRoot = path.resolve(process.execPath, "..", "..")
   const includes = [
     "include/node",
