@@ -112,6 +112,8 @@ const buildRocFile = (
   const errors = []
   const buildingForMac = target.startsWith("macos") || (target === "" && os.platform() === "darwin")
   const buildingForLinux = target.startsWith("linux") || (target === "" && os.platform() === "linux")
+  const rocBuildOutputDir = os.tmpdir()
+  const rocBuildOutputFile = path.join(rocBuildOutputDir, rocFileName.replace(/\.roc$/, ".o"))
 
   // Build the initial Roc object binary for the current OS/architecture.
   //
@@ -125,6 +127,8 @@ const buildRocFile = (
       target === "" ? "" : `--target=${target}`,
       optimize ? "--optimize" : "",
       "--no-link",
+      "--output",
+      rocBuildOutputFile,
       rocFilePath
     ].filter((part) => part !== ""),
   )
@@ -196,9 +200,6 @@ export function callRoc<T extends JsonValue, U extends JsonValue>(input: T): U
 
   // For now, these are hardcoded. In the future we can extract them into a function to call for multiple entrypoints.
   const ccTarget = target === "" ? "" : `--target=${ccTargetFromRocTarget(target)}`
-  const rocLibDir = rocFileDir
-
-  const rocLib = path.join(rocLibDir, rocFileName.replace(/\.roc$/, `-${target}.o`))
   const cGluePath = path.join(__dirname, "node-to-roc.c")
   const includeRoot = path.resolve(process.execPath, "..", "..")
   const includes = [
@@ -262,7 +263,7 @@ export function callRoc<T extends JsonValue, U extends JsonValue>(input: T): U
       ccTarget === "" ? "" : ccTarget,
       "-o",
       addonPath,
-      rocLib,
+      rocBuildOutputFile,
       cGluePath,
       defines,
       includes,
