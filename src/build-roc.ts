@@ -250,10 +250,7 @@ export function callRoc<T extends JsonValue, U extends JsonValue>(input: T): U
 
   const libraries = ["c", "m", "pthread", "dl", "util"].map((library) => "-l" + library)
 
-  if (buildingForMac) {
-    // macOS always requires -lSystem
-    libraries.push("-lSystem")
-  } else if (buildingForLinux) {
+  if (buildingForLinux) {
     // Linux requires -lrt
     libraries.push("-lrt")
   }
