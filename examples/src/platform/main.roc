@@ -1,10 +1,10 @@
 platform "typescript-interop"
-    requires {} { main : { name: Str, foo: Str } -> List U8 }
+    requires {} { main : Str -> Str }
     exposes []
     packages {}
-    imports [TotallyNotJson]
+    imports []
     provides [mainForHost]
 
-mainForHost : { name : Str, foo : Str } -> List U8
+mainForHost : Str -> Str
 mainForHost = \arg ->
     main arg
