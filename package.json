@@ -21,7 +21,7 @@
   "author": "Richard Feldman",
   "license": "UPL-1.0",
   "dependencies": {
-    "roc-lang": "0.0.3-2023-11-27-nightly"
+    "roc-lang": "0.0.3-2023-12-13-nightly"
   },
   "peerDependencies": {
     "esbuild": "^0.14.39"
