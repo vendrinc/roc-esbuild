@@ -27,9 +27,9 @@ addEntryPoints = \buf, types ->
 
     |> Str.concat (init types)
 
-getPopulateArgs : Types, List TypeId -> { populate: Str, argsForCall: List Str, arity: Nat }
+getPopulateArgs : Types, List TypeId -> { populate: Str, argsForCall: List Str, argTypes: List Str, arity: Nat }
 getPopulateArgs = \types, args ->
-    initialState = { populate: "", argsForCall: [], arity: 0 }
+    initialState = { populate: "", argsForCall: [], argTypes: [], arity: 0 }
 
     List.walkWithIndex args initialState \state, typeId, index ->
         shape = Types.shape types typeId
@@ -40,7 +40,8 @@ getPopulateArgs = \types, args ->
         (decl, call) =
             when shape is
                 RocStr -> ("struct RocStr", "node_string_into_roc_str(env, \(src), &\(dest))")
-                _ -> crash "TODO support remaining arg shapes"
+                Bool -> ("bool", "napi_get_value_bool(env, \(src), &\(dest))")
+                _ -> crash "TODO support remaining arg shapes, including \(Inspect.toStr shape)"
 
         {
             populate:
@@ -50,6 +51,7 @@ getPopulateArgs = \types, args ->
                         if (\(call) != napi_ok) { return NULL; }
                 """,
             argsForCall: List.append state.argsForCall "&\(dest)",
+            argTypes: List.append state.argTypes "\(rocTypeName types typeId)*",
             arity: state.arity + 1,
         }
 
@@ -61,21 +63,20 @@ getPopulateAnswer = \types, typeId ->
 
 addEntryPoint : Str, Types, Str, TypeId -> Str
 addEntryPoint = \buf, types, name, id ->
-    (retTypeId, { populate: populateArgs, argsForCall, arity }) =
+    (retTypeId, { populate: populateArgs, argsForCall, argTypes, arity }) =
         when Types.shape types id is
             Function fn -> (fn.ret, getPopulateArgs types fn.args)
-            _ -> (id, { populate: "", argsForCall: [], arity: 0 })
+            _ -> (id, { populate: "", argsForCall: [], argTypes: [], arity: 0 })
 
     arityStr = Num.toStr arity
     rocRetType = rocTypeName types retTypeId
-    entryPointArgTypes = "struct RocStr *arg" # TODO generate these (comma-separated) from types
     externName = "roc__\(name)_1_exposed_generic"
 
     # crash "TODO need to forward-declare structs for record types etc, also use C type names rather than d.ts type names."
     body =
         """
         \(buf)
-        extern void \(externName)(struct RocStr *ret, \(entryPointArgTypes));
+        extern void \(externName)(struct RocStr *ret, \(argTypes |> Str.joinWith ", "));
 
         napi_value call_\(name)(napi_env env, napi_callback_info info) {
             // Set the jump point so we can recover from a segfault.

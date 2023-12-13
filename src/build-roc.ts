@@ -93,7 +93,10 @@ function runRoc(args: Array<string>) {
   const output = spawnSync(rocBinaryPath, args)
 
   if (output.status != 0) {
-    throw new Error("`roc " + args.join(" ") + "` exited with status code " + output.status + ". stderr was:\n\n" + output.stderr.toString())
+    const stdout = output.stdout.toString();
+    const stderr = output.stderr.toString();
+
+    throw new Error("`roc " + args.join(" ") + "` exited with status code " + output.status + ". stdout was:\n\n" + stdout + "\n\nstderr was:\n\n" + stderr)
   }
 }
 
