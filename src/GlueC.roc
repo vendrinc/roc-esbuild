@@ -41,6 +41,8 @@ getPopulateArgs = \types, args ->
             when shape is
                 RocStr -> ("struct RocStr", "node_string_into_roc_str(env, \(src), &\(dest))")
                 Bool -> ("bool", "napi_get_value_bool(env, \(src), &\(dest))")
+                Num F64 -> ("double", "napi_get_value_double(env, \(src), &\(dest))")
+                Num F32 -> crash "TODO use napi_get_value_double and verify that it is in the F32 range; otherwise throw an exception."
                 _ -> crash "TODO support remaining arg shapes, including \(Inspect.toStr shape)"
 
         {
