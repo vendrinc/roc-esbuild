@@ -37,12 +37,22 @@ getPopulateArgs = \types, args ->
         src = "argv[\(indexStr)]"
         dest = "roc_arg_\(indexStr)"
 
-        (decl, call) =
+        (decl, call, ifOk) =
             when shape is
-                RocStr -> ("struct RocStr", "node_string_into_roc_str(env, \(src), &\(dest))")
-                Bool -> ("bool", "napi_get_value_bool(env, \(src), &\(dest))")
-                Num F64 -> ("double", "napi_get_value_double(env, \(src), &\(dest))")
-                Num F32 -> crash "TODO use napi_get_value_double and verify that it is in the F32 range; otherwise throw an exception."
+                RocStr -> ("struct RocStr", "node_string_into_roc_str(env, \(src), &\(dest))", "")
+                Bool -> ("bool", "napi_get_value_bool(env, \(src), &\(dest))", "")
+                Num F64 -> ("double", "napi_get_value_double(env, \(src), &\(dest))", "")
+                Num F32 -> ("float", "node_double_into_float(env, \(src), &\(dest))", "")
+                Num U8 -> ("double tmp; uint8_t", "node_double_into_bounded_int(env, \(src), &tmp, 0, UINT8_MAX)", "\(dest) = (uint8_t)tmp;") # For debugging: printf(\"Result: %u\\n\", \(dest));
+                Num I8 -> ("double tmp; int8_t", "node_double_into_bounded_int(env, \(src), &tmp, INT8_MIN, INT8_MAX)", "\(dest) = (int8_t)tmp;")
+                Num U16 -> ("double tmp; uint16_t", "node_double_into_bounded_int(env, \(src), &tmp, 0, UINT16_MAX)", "\(dest) = (uint16_t)tmp;")
+                Num I16 -> ("double tmp; int16_t", "node_double_into_bounded_int(env, \(src), &tmp, INT16_MIN, INT16_MAX)", "\(dest) = (int16_t)tmp;")
+                Num U32 -> ("double tmp; uint32_t", "node_double_into_bounded_int(env, \(src), &tmp, 0, UINT32_MAX)", "\(dest) = (uint32_t)tmp;")
+                Num I32 -> ("double tmp; int32_t", "node_double_into_bounded_int(env, \(src), &tmp, INT32_MIN, INT32_MAX)", "\(dest) = (int32_t)tmp;")
+                Num U64 -> crash "TODO use napi_get_value_int64 and cast it from int64_t to uint32_t (this will definitely all succeed!)"
+                Num I64 -> crash "TODO use napi_get_value_int64 and cast it from int64_t to uint32_t (this will definitely all succeed!)"
+                Num U128 -> crash "TODO use napi_get_value_bigint_words and verify that it is in the U128 range; otherwise throw an exception."
+                Num I128 -> crash "TODO use napi_get_value_bigint_words and verify that it is in the I128 range; otherwise throw an exception."
                 _ -> crash "TODO support remaining arg shapes, including \(Inspect.toStr shape)"
 
         {
@@ -51,6 +61,7 @@ getPopulateArgs = \types, args ->
                 \(state.populate)
                         \(decl) \(dest);
                         if (\(call) != napi_ok) { return NULL; }
+                        \(ifOk)
                 """,
             argsForCall: List.append state.argsForCall "&\(dest)",
             argTypes: List.append state.argTypes "\(rocTypeName types typeId)*",

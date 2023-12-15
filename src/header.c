@@ -8,6 +8,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <math.h>
+#include <float.h>
 
 // If you get an error about node_api.h not being found, run this to find out
 // the include path to use:
@@ -349,6 +351,49 @@ napi_status node_string_into_roc_str(napi_env env, napi_value node_string,
 
   return status;
 }
+
+// Throw a JS exception if the given value is not a JS `number`, or if that number is outside the given bounds.
+// Otherwise, return a `double` representation of it.
+napi_status node_double_into_bounded_int(napi_env env, napi_value src, double *dest, double min, double max) {
+  napi_status status;
+
+  status = napi_get_value_double(env, src, dest);
+
+  if (status != napi_ok) {
+    return status;
+  }
+
+  double answer = *dest;
+
+  if (isfinite(answer) & (answer >= min) & (answer <= max)) {
+    return napi_ok;
+  } else {
+    // The number we're trying to convert is outside the expected range, so throw a RangeError.
+    return napi_throw_range_error(env, NULL, "Unable to convert a Node `number` to a Roc integer, because the `number` was outside the allowed range of that Roc integer.");
+  }
+}
+
+// Throw a JS exception if the given value is not a JS `number`, or if that number is outside the given bounds.
+// Otherwise, return a `float` representation of it.
+napi_status node_double_into_float(napi_env env, napi_value src, float *dest) {
+  napi_status status;
+  double tmp;
+
+  status = napi_get_value_double(env, src, &tmp);
+
+  if (status != napi_ok) {
+    return status;
+  }
+
+  if ((tmp >= FLT_MIN) & (tmp <= FLT_MAX)) {
+    *dest = tmp;
+    return napi_ok;
+  } else {
+    // The number we're trying to convert is outside the expected range, so throw a RangeError.
+    return napi_throw_range_error(env, NULL, "Unable to convert a Node `number` to a Roc F32, because the `number` was outside the allowed range of F32.");
+  }
+}
+
 
 // Turn the given Node string into a RocBytes and write it into the given
 // RocBytes pointer.
