@@ -24,12 +24,16 @@ addEntryPoints : Str, Types -> Str
 addEntryPoints = \buf, types ->
     List.walk (Types.entryPoints types) buf \state, T name id ->
         addEntryPoint state types name id
-
     |> Str.concat (init types)
 
-getPopulateArgs : Types, List TypeId -> { populate: Str, argsForCall: List Str, argTypes: List Str, arity: Nat }
+getPopulateArgs : Types, List TypeId -> { populate : Str, argsForCall : List Str, argTypes : List Str, arity : Nat }
 getPopulateArgs = \types, args ->
-    initialState = { populate: "", argsForCall: [], argTypes: [], arity: 0 }
+    initialPopulate =
+        """
+                napi_value* tmp_napi_value;
+                double tmp_double;
+        """
+    initialState = { populate:, argsForCall: [], argTypes: [], arity: 0 }
 
     List.walkWithIndex args initialState \state, typeId, index ->
         shape = Types.shape types typeId
@@ -37,32 +41,68 @@ getPopulateArgs = \types, args ->
         src = "argv[\(indexStr)]"
         dest = "roc_arg_\(indexStr)"
 
-        (decl, call, ifOk) =
+        basicDecl = \cType, call ->
+            """
+                    \(cType) \(dest);
+
+                    if (\(call)(env, \(src), &\(dest)) != napi_ok) { return NULL; }
+            """
+
+        toInt = \cType, min, max ->
+            # For debugging: printf(\"Result: %u\\n\", \(dest));
+            """
+                    \(cType) \(dest);
+
+                    if (node_double_into_bounded_int(env, \(src), &tmp_double, 0, UINT8_MAX) != napi_ok) { return NULL; }
+                    \(dest) = (\(cType))tmp_double;
+            """
+
+        toRecord = \name, fields ->
+            populateFields = List.map fields \field ->
+                fieldVar = "obj_field_\(field.name)";
+
+                cType =
+                    when field.id is
+                        _ -> crash "TODO populate cType for field"
+
+                """
+                            \(cType) \(fieldVar);
+
+                            if (napi_get_named_property(env, \(src), roc_str_into_c_string("\(field.name)"), tmp_napi_value) != napi_ok) {
+                                return NULL;
+                            }
+
+                            dest.\(field.name) = \(fieldVar);
+                """
+
+            """
+                    \(cType) \(dest);
+
+            \(populateFields |> Str.join "\n\n")
+            """
+
+        buf =
             when shape is
-                RocStr -> ("struct RocStr", "node_string_into_roc_str(env, \(src), &\(dest))", "")
-                Bool -> ("bool", "napi_get_value_bool(env, \(src), &\(dest))", "")
-                Num F64 -> ("double", "napi_get_value_double(env, \(src), &\(dest))", "")
-                Num F32 -> ("float", "node_double_into_float(env, \(src), &\(dest))", "")
-                Num U8 -> ("double tmp; uint8_t", "node_double_into_bounded_int(env, \(src), &tmp, 0, UINT8_MAX)", "\(dest) = (uint8_t)tmp;") # For debugging: printf(\"Result: %u\\n\", \(dest));
-                Num I8 -> ("double tmp; int8_t", "node_double_into_bounded_int(env, \(src), &tmp, INT8_MIN, INT8_MAX)", "\(dest) = (int8_t)tmp;")
-                Num U16 -> ("double tmp; uint16_t", "node_double_into_bounded_int(env, \(src), &tmp, 0, UINT16_MAX)", "\(dest) = (uint16_t)tmp;")
-                Num I16 -> ("double tmp; int16_t", "node_double_into_bounded_int(env, \(src), &tmp, INT16_MIN, INT16_MAX)", "\(dest) = (int16_t)tmp;")
-                Num U32 -> ("double tmp; uint32_t", "node_double_into_bounded_int(env, \(src), &tmp, 0, UINT32_MAX)", "\(dest) = (uint32_t)tmp;")
-                Num I32 -> ("double tmp; int32_t", "node_double_into_bounded_int(env, \(src), &tmp, INT32_MIN, INT32_MAX)", "\(dest) = (int32_t)tmp;")
+                RocStr -> basicDecl "struct RocStr" "node_string_into_roc_str"
+                Bool -> basicDecl "bool" "napi_get_value_bool"
+                Num F64 -> basicDecl "double" "napi_get_value_double"
+                Num F32 -> basicDecl "float" "node_double_into_float"
+                Num U8 -> toInt "int8_t" "0" "UINT8_MAX"
+                Num I8 -> toInt "int8_t" "INT8_MIN" "INT8_MAX"
+                Num U16 -> toInt "uint16_t" "0" "UINT16_MAX"
+                Num I16 -> toInt "int16_t" "INT16_MIN" "INT16_MAX"
+                Num U32 -> toInt "uint32_t" "0" "UINT32_MAX"
+                Num I32 -> toInt "int32_t" "INT32_MIN" "INT32_MAX"
                 Num U64 -> crash "TODO use napi_get_value_int64 and cast it from int64_t to uint32_t (this will definitely all succeed!)"
                 Num I64 -> crash "TODO use napi_get_value_int64 and cast it from int64_t to uint32_t (this will definitely all succeed!)"
                 Num U128 -> crash "TODO use napi_get_value_bigint_words and verify that it is in the U128 range; otherwise throw an exception."
                 Num I128 -> crash "TODO use napi_get_value_bigint_words and verify that it is in the I128 range; otherwise throw an exception."
+                Struct { name, fields: HasNoClosure fields } -> toRecord name fields
+                Struct { name, fields: HasClosure fields } -> crash "TODO handle records with closures in them"
                 _ -> crash "TODO support remaining arg shapes, including \(Inspect.toStr shape)"
 
         {
-            populate:
-                """
-                \(state.populate)
-                        \(decl) \(dest);
-                        if (\(call) != napi_ok) { return NULL; }
-                        \(ifOk)
-                """,
+            populate: "\(state.populate)\n        \(buf)",
             argsForCall: List.append state.argsForCall "&\(dest)",
             argTypes: List.append state.argTypes "\(rocTypeName types typeId)*",
             arity: state.arity + 1,
@@ -319,7 +359,7 @@ recordTypeName : Types, List { name : Str, id : TypeId }* -> Str
 recordTypeName = \types, fields ->
     fieldTypes =
         fields
-        |> List.map \{name, id} -> "\(name): \(rocTypeName types id)"
+        |> List.map \{ name, id } -> "\(name): \(rocTypeName types id)"
         |> Str.joinWith ", "
 
     "{ \(fieldTypes) }"
