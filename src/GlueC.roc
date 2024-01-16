@@ -2,7 +2,7 @@ interface GlueC
     exposes [generate]
     imports [
         pf.Types.{ Types },
-        pf.Shape.{ Shape }, # , RocStructFields },
+        # pf.Shape.{ Shape }, # , RocStructFields },
         pf.TypeId.{ TypeId },
         "header.c" as header : Str,
     ]
@@ -145,7 +145,7 @@ addEntryPoint = \buf, types, name, id ->
 init : Types -> Str
 init = \types ->
     nodeFns = # TODO dynamically generate these from Types
-        List.walk (Types.entryPoints types) "" \state, T name _ ->
+        List.walk (Types.entryPoints types) "" \_state, T name _ ->
             """
 
                 status = napi_create_function(env, NULL, 0, call_\(name), NULL, &fn);
@@ -297,23 +297,23 @@ reservedKeywords = Set.fromList [
     "false",
 ]
 
-toArgStr : List TypeId, Types, (TypeId, Shape, Nat -> Str) -> Str
-toArgStr = \args, types, fmt ->
-    List.walkWithIndex args "" \state, argId, index ->
-        shape = Types.shape types argId
+# toArgStr : List TypeId, Types, (TypeId, Shape, Nat -> Str) -> Str
+# toArgStr = \args, types, fmt ->
+#     List.walkWithIndex args "" \state, argId, index ->
+#         shape = Types.shape types argId
 
-        # Drop `{}` args, as JavaScript has no equivalent of passing {}; instead, they would just not accept anything.
-        if isUnit shape then
-            state
-        else
-            argStr = fmt argId shape index
+#         # Drop `{}` args, as JavaScript has no equivalent of passing {}; instead, they would just not accept anything.
+#         if isUnit shape then
+#             state
+#         else
+#             argStr = fmt argId shape index
 
-            if Str.isEmpty state then
-                argStr # Don't prepend a comma if this is the first one
-            else
-                state
-                |> Str.concat ", "
-                |> Str.concat argStr
+#             if Str.isEmpty state then
+#                 argStr # Don't prepend a comma if this is the first one
+#             else
+#                 state
+#                 |> Str.concat ", "
+#                 |> Str.concat argStr
 
 recordTypeName : Types, List { name : Str, id : TypeId }* -> Str
 recordTypeName = \types, fields ->
@@ -324,11 +324,11 @@ recordTypeName = \types, fields ->
 
     "{ \(fieldTypes) }"
 
-isUnit : Shape -> Bool
-isUnit = \shape ->
-    when shape is
-        Unit -> Bool.true
-        _ -> Bool.false
+# isUnit : Shape -> Bool
+# isUnit = \shape ->
+#     when shape is
+#         Unit -> Bool.true
+#         _ -> Bool.false
 
 ## nodeTypeName must be one of:
 ##     uint32
@@ -341,11 +341,11 @@ isUnit = \shape ->
 ## Node doesn't have any other functions to create those.
 ##
 ## For 128-bit numbers, use https://nodejs.org/api/n-api.html#napi_create_bigint_words
-rocNumToNode : Str, Str, Str -> Str
-rocNumToNode = \nodeTypeName, inputName, outputName ->
-    """
-        status = napi_create_\(nodeTypeName)(env, \(inputName), \(outputName));
-    """
+# rocNumToNode : Str, Str, Str -> Str
+# rocNumToNode = \nodeTypeName, inputName, outputName ->
+#     """
+#         status = napi_create_\(nodeTypeName)(env, \(inputName), \(outputName));
+#     """
 
 ## nodeTypeName must be one of:
 ##     string_utf8
@@ -356,11 +356,11 @@ rocNumToNode = \nodeTypeName, inputName, outputName ->
 ##     external (gives a void*)
 ##
 ## Node doesn't have any other functions to create those.
-nodeScalarToRoc : Str, Str, Str -> Str
-nodeScalarToRoc = \nodeTypeName, inputName, outputName ->
-    """
-        status = napi_get_value_\(nodeTypeName)(env, \(inputName), \(outputName));
-    """
+# nodeScalarToRoc : Str, Str, Str -> Str
+# nodeScalarToRoc = \nodeTypeName, inputName, outputName ->
+#     """
+#         status = napi_get_value_\(nodeTypeName)(env, \(inputName), \(outputName));
+#     """
 
 ## nodeTypeName must be one of:
 ##     bigint_int64
@@ -368,8 +368,8 @@ nodeScalarToRoc = \nodeTypeName, inputName, outputName ->
 ##     bigint_words
 ##
 ## Node doesn't have any other functions to create those.
-nodeBigIntToRoc : Str, Str, Str -> Str
-nodeBigIntToRoc = \nodeTypeName, inputName, outputName ->
-    """
-        status = napi_get_value_\(nodeTypeName)(env, \(inputName), \(outputName), &lossless);
-    """
+# nodeBigIntToRoc : Str, Str, Str -> Str
+# nodeBigIntToRoc = \nodeTypeName, inputName, outputName ->
+#     """
+#         status = napi_get_value_\(nodeTypeName)(env, \(inputName), \(outputName), &lossless);
+#     """
