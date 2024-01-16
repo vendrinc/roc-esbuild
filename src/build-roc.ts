@@ -266,8 +266,6 @@ const buildRocFile = (
     .filter((part) => part !== "")
     .join(" ")
 
-    console.log("exec:", cmd)
-
   // Compile the node <-> roc C bridge and statically link in the .o binary (produced by `roc`)
   // into the .node addon binary
   execSync(cmd, { stdio: "inherit" })
