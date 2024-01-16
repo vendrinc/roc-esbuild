@@ -95,8 +95,9 @@ function runRoc(args: Array<string>) {
   if (output.status != 0) {
     const stdout = output.stdout.toString();
     const stderr = output.stderr.toString();
+    const status = output.status === null ? `null, which means the subprocess terminated with a signal (in this case, signal ${output.signal})` : `code ${output.status}`
 
-    throw new Error("`roc " + args.join(" ") + "` exited with status code " + output.status + ". stdout was:\n\n" + stdout + "\n\nstderr was:\n\n" + stderr)
+    throw new Error("`roc " + args.join(" ") + "` exited with status " + status + ". stdout was:\n\n" + stdout + "\n\nstderr was:\n\n" + stderr)
   }
 }
 
