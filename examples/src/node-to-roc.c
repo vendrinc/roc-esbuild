@@ -16,11 +16,6 @@
 // 'node'))"
 #include <node_api.h>
 
-// Zero-sized types are not part of the C standard, but both clang and gcc have
-// an extension to the C standard which supports ZSTs like this.
-typedef struct {
-} Unit;
-
 // This is not volatile because it's only ever set inside a signal handler,
 // which according to chatGPT is fine.
 //
@@ -515,90 +510,140 @@ void roc_panic(struct RocStr *roc_str) {
   longjmp(jump_on_crash, 1);
 }
 
-extern void mainForHost(struct RocBytes *ret, struct RocBytes *arg);
+extern void roc__mainForHost_1_exposed_generic(struct RocBytes *ret,
+                                               struct RocBytes *arg);
 
-napi_value call_mainForHost(napi_env env, napi_callback_info info) {
-    // Set the jump point so we can recover from a segfault.
-    if (setjmp(jump_on_crash) == 0) {
-        // This is *not* the result of a longjmp
+// Receive a string value from Node and pass it to Roc as a RocStr, then get a
+// RocStr back from Roc and convert it into a Node string.
+napi_value call_roc(napi_env env, napi_callback_info info) {
+  // Set the jump point so we can recover from a segfault.
+  if (setjmp(jump_on_crash) == 0) {
+    // This is *not* the result of a longjmp
 
-        size_t argc = 1;
-        napi_value argv[1];
-        napi_value arg_buf[1];
+    // Get the argument passed to the Node function
+    napi_value global, json, stringify, arg_buf[1], node_json_string;
+    size_t argc = 1;
+    napi_value argv[1];
 
-        napi_status status = napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
+    napi_status status = napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
 
-        if (status != napi_ok) {
-            return NULL;
-        }
-
-        struct RocBytes roc_ret; // This will be populated when the Roc function gets called
-
-        // Call the Roc function to populate `roc_ret`'s bytes.
-        struct RocBytes roc_arg; // TODO probably need N of these where N is the arity
-        
-        if (node_string_into_roc_bytes(env, node_json_string, &roc_arg) != napi_ok) {
-            return NULL;
-        }
-
-        roc__mainForHost_1_exposed_generic(&roc_ret, &roc_arg); // TODO CALL WITH EXACT ARITY HERE!
-
-        napi_value answer;
-
-        // TODO CONVERT roc_ret INTO THE APPROPRIATE NAPI TYPE FOR answer. WE KNOW WHAT TYPE TO CONVERT IT TO!
-
-        return answer;
-    } else {
-        // This *is* the result of a longjmp
-        char *msg = last_roc_crash_msg != NULL ? (char *)last_roc_crash_msg
-                                            : strsignal(last_signal);
-        char *suffix =
-            " while running `main` in a .roc file";
-        char *buf =
-            malloc(strlen(msg) + strlen(suffix) + 1); // +1 for the null terminator
-
-        strcpy(buf, msg);
-        strcat(buf, suffix);
-
-        napi_throw_error(env, NULL, buf);
-
-        free(buf);
-
-        return NULL;
+    if (status != napi_ok) {
+      return NULL;
     }
+
+    // Call JSON.stringify(node_arg)
+
+    // Get the global object
+    if (napi_get_global(env, &global) != napi_ok) {
+      return NULL;
+    }
+
+    // global.JSON
+    if (napi_get_named_property(env, global, "JSON", &json) != napi_ok) {
+      return NULL;
+    }
+
+    // global.JSON.stringify
+    if (napi_get_named_property(env, json, "stringify", &stringify) !=
+        napi_ok) {
+      return NULL;
+    }
+
+    // Populate stringify's args
+    napi_value node_arg = argv[0];
+
+    arg_buf[0] = node_arg;
+
+    // Call JSON.stringify
+    if (napi_call_function(env, json, stringify, 1, arg_buf,
+                           &node_json_string) != napi_ok) {
+      return NULL;
+    }
+
+    // Translate the JSON string into a Roc List U8
+    struct RocBytes roc_arg;
+
+    if (node_string_into_roc_bytes(env, node_json_string, &roc_arg) != napi_ok) {
+      return NULL;
+    }
+
+    struct RocBytes roc_ret;
+
+    // Call the Roc function to populate `roc_ret`'s bytes.
+    roc__mainForHost_1_exposed_generic(&roc_ret, &roc_arg);
+
+    // Consume that List U8 to create the Node string.
+    node_json_string = roc_bytes_into_node_string(env, roc_ret);
+
+    napi_value parse;
+
+    // JSON.parse
+    if (napi_get_named_property(env, json, "parse", &parse) != napi_ok) {
+      return NULL;
+    }
+
+    // Reuse the same arg_buf as last time
+    arg_buf[0] = node_json_string;
+
+    // Call JSON.parse on what we got back from Roc
+    napi_value answer;
+
+    if (napi_call_function(env, json, parse, 1, arg_buf, &answer) != napi_ok) {
+      return NULL;
+    }
+
+    return answer;
+  } else {
+    // This *is* the result of a longjmp
+    char *msg = last_roc_crash_msg != NULL ? (char *)last_roc_crash_msg
+                                           : strsignal(last_signal);
+    char *suffix =
+        " while running `main` in a .roc file";
+    char *buf =
+        malloc(strlen(msg) + strlen(suffix) + 1); // +1 for the null terminator
+
+    strcpy(buf, msg);
+    strcat(buf, suffix);
+
+    napi_throw_error(env, NULL, buf);
+
+    free(buf);
+
+    return NULL;
+  }
 }
 
 napi_value init(napi_env env, napi_value exports) {
-    // Before doing anything else, install signal handlers in case subsequent C
-    // code causes any of these.
-    struct sigaction action;
-    memset(&action, 0, sizeof(action));
-    action.sa_handler = signal_handler;
+  // Before doing anything else, install signal handlers in case subsequent C
+  // code causes any of these.
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  action.sa_handler = signal_handler;
 
-    // Handle all the signals that could take out the Node process and translate
-    // them to exceptions.
-    sigaction(SIGSEGV, &action, NULL);
-    sigaction(SIGBUS, &action, NULL);
-    sigaction(SIGFPE, &action, NULL);
-    sigaction(SIGILL, &action, NULL);
+  // Handle all the signals that could take out the Node process and translate
+  // them to exceptions.
+  sigaction(SIGSEGV, &action, NULL);
+  sigaction(SIGBUS, &action, NULL);
+  sigaction(SIGFPE, &action, NULL);
+  sigaction(SIGILL, &action, NULL);
 
-    // Create our Node functions and expose them from this module.
-    napi_status status;
-    napi_value fn;
+  // Create our Node functions and expose them from this module.
+  napi_status status;
+  napi_value fn;
 
-    status = napi_create_function(env, NULL, 0, call_mainForHost, NULL, &fn);
+  status = napi_create_function(env, NULL, 0, call_roc, NULL, &fn);
 
-    if (status != napi_ok) {
-        return NULL;
-    }
+  if (status != napi_ok) {
+    return NULL;
+  }
 
-    status = napi_set_named_property(env, exports, "callRoc", fn); // TODO when we support multiple entrypoints, rename this from callRoc to e.g. call_mainForHost - but this might result in Node getting call_roc__mainForHost_1 etc. - so might want to clean that up a bit with some find/replace on the underscores
+  status = napi_set_named_property(env, exports, "callRoc", fn);
 
-    if (status != napi_ok) {
-        return NULL;
-    }
+  if (status != napi_ok) {
+    return NULL;
+  }
 
-    return exports;
+  return exports;
 }
 
 NAPI_MODULE(NODE_GYP_MODULE_NAME, init)
