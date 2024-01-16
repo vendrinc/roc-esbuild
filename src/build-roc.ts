@@ -115,8 +115,10 @@ const buildRocFile = (
   const errors = []
   const buildingForMac = target.startsWith("macos") || (target === "" && os.platform() === "darwin")
   const buildingForLinux = target.startsWith("linux") || (target === "" && os.platform() === "linux")
-  const rocBuildOutputDir = os.tmpdir()
-  const rocBuildOutputFile = path.join(rocBuildOutputDir, rocFileName.replace(/\.roc$/, ".o"))
+  const tmpDir = os.tmpdir()
+  const rocBuildOutputDir = fs.mkdtempSync(`${tmpDir}${path.sep}`)
+  const targetSuffix = (target === "" ? "native" : target)
+  const rocBuildOutputFile = path.join(rocBuildOutputDir, rocFileName.replace(/\.roc$/, `-${targetSuffix}.o`))
 
   // Build the initial Roc object binary for the current OS/architecture.
   //
@@ -265,8 +267,6 @@ const buildRocFile = (
     .flat()
     .filter((part) => part !== "")
     .join(" ")
-
-    console.log("exec:", cmd)
 
   // Compile the node <-> roc C bridge and statically link in the .o binary (produced by `roc`)
   // into the .node addon binary
